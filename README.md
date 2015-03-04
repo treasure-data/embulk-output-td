@@ -17,7 +17,11 @@ TODO: Write short description here
 ```yaml
 out:
   type: td
-  api_server_url: https://api.treasuredata.com:80/
+  endpoint: api.treasuredata.com
+  apikey: <your apikey>
+  session: <session name>
+  database: <db name>
+  table: <table name>
 ```
 
 ## Build
