@@ -54,7 +54,10 @@ public class TDOutputPlugin
         //  TODO use_ssl
         //  TODO http_proxy
         //  TODO connect_timeout, read_timeout, send_timeout
-        //  TODO tmpdir
+
+        @Config("tmpdir")
+        @ConfigDefault("/tmp")
+        public String getTempDir();
     }
 
     private final Injector injector;
@@ -67,31 +70,35 @@ public class TDOutputPlugin
         this.log = Exec.getLogger(getClass());
     }
 
-    public ConfigDiff transaction(ConfigSource config,
-            Schema schema, int processorCount,
-            OutputPlugin.Control control)
+    public ConfigDiff transaction(final ConfigSource config, final Schema schema, int processorCount,
+                                  OutputPlugin.Control control)
     {
         final PluginTask task = config.loadConfig(PluginTask.class);
         final TDApiClient client = createTDApiClient(task);
+        try {
 
-        //  TODO check connectivity
-        //  TODO check if the database exists
-        //  TODO check if the table exists
+            //  TODO check connectivity
+            //  TODO check if the database exists
+            //  TODO check if the table exists
 
-        //  check MessagePackRecordOutput configuration before transaction is started
-        createMessagePackPageOutput(task, schema, client);
+            //  check MessagePackRecordOutput configuration before transaction is started
+            createMessagePackPageOutput(task, schema, client);
 
-        //  TODO should change the behavior of the method with 'getOrCreateBulkImportSession'
-        final String sessionName = newBulkImportSession(task, client);
-        task.setSession(sessionName);
-        //  TODO check the status of the session
+            //  TODO should change the behavior of the method with 'getOrCreateBulkImportSession'
+            final String sessionName = newBulkImportSession(task, client);
+            task.setSession(sessionName);
+            //  TODO check the status of the session
 
-        //  TODO retryable (idempotent) output:
-        //  TODO return resume(task.dump(), schema, processorCount, control);
+            //  TODO retryable (idempotent) output:
+            //  TODO return resume(task.dump(), schema, processorCount, control);
 
-        control.run(task.dump()); //  TODO upload part files
+            control.run(task.dump()); //  TODO upload part files
 
-        commitBulkImportSession(task, client, sessionName);
+            commitBulkImportSession(task, client, sessionName);
+
+        } finally {
+            client.close();
+        }
 
         ConfigDiff configDiff = Exec.newConfigDiff();
         return configDiff;

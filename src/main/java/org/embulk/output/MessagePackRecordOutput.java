@@ -1,13 +1,16 @@
 package org.embulk.output;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Throwables;
 import org.embulk.output.writer.BooleanFieldWriter;
 import org.embulk.output.writer.DoubleFieldWriter;
 import org.embulk.output.writer.FieldWriter;
 import org.embulk.output.writer.LongFieldWriter;
+import org.embulk.output.writer.LongPrimaryKeyWriter;
 import org.embulk.output.writer.PrimaryKeyWriter;
 import org.embulk.output.writer.StringFieldWriter;
 import org.embulk.output.writer.TimestampPrimaryKeyDuplicater;
+import org.embulk.output.writer.TimestampPrimaryKeyWriter;
 import org.embulk.output.writer.TimestampStringFieldWriter;
 import org.embulk.spi.Column;
 import org.embulk.spi.Schema;
@@ -22,6 +25,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static org.embulk.spi.type.Types.BOOLEAN;
 import static org.embulk.spi.type.Types.DOUBLE;
@@ -32,6 +36,8 @@ import static org.msgpack.type.ValueFactory.createRawValue;
 
 public class MessagePackRecordOutput
 {
+    private static final byte[] TIME_COLUMN = "time".getBytes();
+
     private final MapValue row;
     private final FieldWriter[] fieldWriters;
     private final PrimaryKeyWriter primaryKeyWriter;
@@ -52,35 +58,54 @@ public class MessagePackRecordOutput
             try {
                 keyName = field.getName().getBytes("UTF-8");
                 kvs.add(createRawValue(keyName, true));
-            } catch (UnsupportedEncodingException ex) {
-                throw new RuntimeException("UTF-8 must be supported", ex);
+            } catch (UnsupportedEncodingException e) {
+                throw new RuntimeException("UTF-8 must be supported", e);
             }
 
             // value
-            Type type = field.getType();
-            if (type.equals(BOOLEAN)) {  // boolean
-                kvs.add(fieldWriters[i] = new BooleanFieldWriter());
-            } else if (type.equals(LONG)) {  // long
-                kvs.add(fieldWriters[i] = new LongFieldWriter());
-            } else if (type.equals(DOUBLE)) {  // double
-                kvs.add(fieldWriters[i] = new DoubleFieldWriter());
-            } else if (type.equals(STRING)) {  // string
-                kvs.add(fieldWriters[i] = new StringFieldWriter());
-            } else if (type instanceof TimestampType) {
-                if (firstTimestampColumnIndex < 0) {
-                    firstTimestampColumnIndex = i;
+            if (Objects.equals(keyName, TIME_COLUMN)) {
+                //  primary key
+                if (field.getType().equals(LONG)) {  // long
+                    kvs.add(fieldWriters[i] = new LongPrimaryKeyWriter());
+                } else if (field.getType() instanceof TimestampType) {  // timestamp
+                    kvs.add(fieldWriters[i] = new TimestampPrimaryKeyWriter());
+                } else {
+                    throw new RuntimeException("'time' field must be integer or timestamp type");
                 }
-
-                TimestampFormatter f = createTimestampFormatter(task, (TimestampType) type);
-                kvs.add(fieldWriters[i] = new TimestampStringFieldWriter(f));
+                pkWriter = (PrimaryKeyWriter)fieldWriters[i];
 
             } else {
-                throw new UnsupportedOperationException("Unsupported type: " + type.getName());
+                // other keys
+                Type type = field.getType();
+                if (type.equals(BOOLEAN)) {  // boolean
+                    kvs.add(fieldWriters[i] = new BooleanFieldWriter());
+                } else if (type.equals(LONG)) {  // long
+                    kvs.add(fieldWriters[i] = new LongFieldWriter());
+                } else if (type.equals(DOUBLE)) {  // double
+                    kvs.add(fieldWriters[i] = new DoubleFieldWriter());
+                } else if (type.equals(STRING)) {  // string
+                    kvs.add(fieldWriters[i] = new StringFieldWriter());
+                } else if (type instanceof TimestampType) {
+                    if (firstTimestampColumnIndex < 0) {
+                        firstTimestampColumnIndex = i;
+                    }
 
+                    TimestampFormatter f = createTimestampFormatter(task, (TimestampType) type);
+                    kvs.add(fieldWriters[i] = new TimestampStringFieldWriter(f));
+
+                } else {
+                    throw new UnsupportedOperationException("Unsupported type: " + type.getName());
+
+                }
             }
         }
 
-        if (firstTimestampColumnIndex >= 0){
+        if (pkWriter != null) {
+            //  if it found a primaryKey column within the schema,
+            //  it uses the column as 'time' column.
+            this.primaryKeyWriter = pkWriter;
+
+        } else if (firstTimestampColumnIndex >= 0) {
             //  if it can find first timestamp column, it uses the column as
             //  'time' column. When it gets the column value, it copies the value
             //  to the 'time' column.

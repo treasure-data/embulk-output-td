@@ -44,14 +44,12 @@ public class MessagePackPageOutput
     MessagePackPageOutput(final PluginTask task, final TDApiClient client, final MessagePackRecordOutput recordOutput)
     {
         log = Exec.getLogger(getClass());
-        this.task = task;
+        this.task = checkNotNull(task);
         this.client = checkNotNull(client);
 
         msgpack = new MessagePack();
         this.recordOutput = checkNotNull(recordOutput);
-
-        //this.tempDir = new File(checkNotNull(task.getTempDir())); //  TODO
-        tempDir = new File("/tmp");
+        tempDir = new File(task.getTempDir());
     }
 
     void open(final Schema schema)
