@@ -15,8 +15,8 @@ configurations {
 version = "0.1.0"
 
 dependencies {
-    compile  "org.embulk:embulk-core:0.5.0"
-    provided "org.embulk:embulk-core:0.5.0"
+    compile  "org.embulk:embulk-core:0.5.1"
+    provided "org.embulk:embulk-core:0.5.1"
     compile  "org.eclipse.jetty:jetty-client:9.2.2.v20140723"
     compile  "org.msgpack:msgpack:0.6.7"
     compile  "com.google.inject:guice:3.0"
