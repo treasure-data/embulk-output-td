@@ -10,7 +10,13 @@ TODO: Write short description here
 
 ## Configuration
 
-- **api_server_url**: url (string, required)
+- **endpoint**: hostname (string, required)
+- **apikey**: apikey (string, required)
+- **session**: bulk_import session name (string, optional)
+- **database**: database name (string, required)
+- **table**: table name (string, required)
+- **auto_create_table**: the flag for creating the database and/or the table if they don't exist (boolean, default=true)
+- **use_ssl**: the flag (boolean, default=true)
 
 ## Example
 
