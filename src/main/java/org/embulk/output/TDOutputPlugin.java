@@ -10,8 +10,12 @@ import com.google.inject.Injector;
 import com.treasuredata.api.TDApiClient;
 import com.treasuredata.api.TDApiClientConfig;
 import com.treasuredata.api.TDApiConflictException;
+import com.treasuredata.api.TDApiException;
+import com.treasuredata.api.TDApiNotFoundException;
 import com.treasuredata.api.model.TDBulkImportSession;
 import com.treasuredata.api.model.TDBulkImportSession.ImportStatus;
+import com.treasuredata.api.model.TDDatabase;
+import com.treasuredata.api.model.TDTable;
 import org.embulk.config.CommitReport;
 import org.embulk.config.Config;
 import org.embulk.config.ConfigDefault;
@@ -43,7 +47,10 @@ public class TDOutputPlugin
         public Optional<String> getSession();
         public void setSession(String session);
 
-        //  TODO auto_create_table
+        @Config("auto_create_table")
+        @ConfigDefault("true")
+        public boolean getAutoCreateTable();
+
 
         @Config("database")
         public String getDatabase();
@@ -76,10 +83,9 @@ public class TDOutputPlugin
         final PluginTask task = config.loadConfig(PluginTask.class);
         final TDApiClient client = createTDApiClient(task);
         try {
-
-            //  TODO check connectivity
-            //  TODO check if the database exists
-            //  TODO check if the table exists
+            // check if the database and/or table exist or not
+            getOrCreateDatabase(task, client);
+            getOrCreateTable(task, client);
 
             //  check MessagePackRecordOutput configuration before transaction is started
             createMessagePackPageOutput(task, schema, client);
@@ -128,6 +134,81 @@ public class TDOutputPlugin
             throw Throwables.propagate(e);
         }
         return client;
+    }
+
+    private void getOrCreateDatabase(final PluginTask task, final TDApiClient client)
+    {
+        final String apikey = task.getApiKey();
+        final String databaseName = task.getDatabase();
+
+        boolean exists = false;
+        List<TDDatabase> dbs = client.getDatabases(apikey);
+        for (TDDatabase db : dbs) {
+            if (db.getName().equals(databaseName)) {
+                exists = true;
+                break;
+            }
+        }
+
+        if (exists) {
+            // if the database exists, it returns normally.
+            log.info("Database {} exists", databaseName);
+            return;
+
+        } else if (!task.getAutoCreateTable()) {
+            // if the database doesn't exist and auto_create_table is false, it throws an exception.
+            log.error("Database {} doesn't exist", databaseName);
+            throw new TDApiException(String.format("Database %s doesn't exist", databaseName));
+
+        } else {
+            // if auto_create_table flag is true, it creates new database with the name.
+            log.info("Create database {} because it doesn't exist", databaseName);
+            try {
+                client.createDatabase(apikey, databaseName);
+            } catch (TDApiConflictException e) {
+                // ignore
+            }
+        }
+    }
+
+    private void getOrCreateTable(final PluginTask task, final TDApiClient client)
+    {
+        final String apikey = task.getApiKey();
+        final String databaseName = task.getDatabase();
+        final String tableName = task.getTable();
+
+        boolean exists = false;
+        List<TDTable> tables = client.getTables(apikey, databaseName);
+        for (TDTable table : tables) {
+            if (table.getName().equals(tableName)) {
+                exists = true;
+                break;
+            }
+        }
+
+        if (exists) {
+            // if the table exists, it returns normally.
+            log.info("Table {}.{} exists", databaseName, tableName);
+            return;
+
+        } else if (!task.getAutoCreateTable()) {
+            // if the table doesn't exist and the auto_create_table is false, it throws an exception.
+            log.info("Table {}.{} doesn't exist", databaseName, tableName);
+            throw new TDApiException(String.format("Table %s.%s doesn't exist", databaseName, tableName));
+
+        } else {
+            // if auto_create_table flag is true, it creates new table with the name.
+            log.info("Create table {}.{} because it doesn't exist", databaseName, tableName);
+            try {
+                client.createTable(apikey, databaseName, tableName);
+            } catch (TDApiConflictException e) {
+                // ignore
+
+            } catch (IOException e) {
+                throw Throwables.propagate(e);
+
+            }
+        }
     }
 
     private String newBulkImportSession(final PluginTask task, final TDApiClient client)
