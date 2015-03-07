@@ -84,6 +84,15 @@ public class TDApiClient
         return databaseList.getDatabases();
     }
 
+    public TDDatabase createDatabase(String apikey, String databaseName)
+    {
+        Request request = prepareExchange(apikey, HttpMethod.POST,
+                buildUrl("/v3/database/create", databaseName));
+        ContentResponse response = executeExchange(request);
+        TDDatabase database = parseResponse(response.getContent(), TDDatabase.class);
+        return database;
+    }
+
     public List<TDTable> getTables(String apikey, String databaseName)
     {
         Request request = prepareExchange(apikey, HttpMethod.GET,
@@ -91,6 +100,16 @@ public class TDApiClient
         ContentResponse response = executeExchange(request);
         TDTableList tables = parseResponse(response.getContent(), TDTableList.class);
         return tables.getTables();
+    }
+
+    public TDTable createTable(String apikey, String databaseName, String tableName)
+            throws IOException
+    {
+        Request request = prepareExchange(apikey, HttpMethod.POST,
+                buildUrl("/v3/table/create", databaseName, tableName));
+        ContentResponse response = executeExchange(request);
+        TDTable table = parseResponse(response.getContent(), TDTable.class);
+        return table;
     }
 
     public void deleteTable(String apikey, String databaseName, String tableName)
