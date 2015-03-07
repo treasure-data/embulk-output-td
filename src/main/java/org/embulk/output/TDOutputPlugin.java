@@ -23,14 +23,14 @@ import org.embulk.spi.Exec;
 import org.embulk.spi.OutputPlugin;
 import org.embulk.spi.Schema;
 import org.embulk.spi.TransactionalPageOutput;
-import org.embulk.spi.time.TimestampFormatter;
+import org.embulk.spi.time.TimestampFormatter.FormatterTask;
 import org.slf4j.Logger;
 
 public class TDOutputPlugin
         implements OutputPlugin
 {
     public interface PluginTask
-            extends Task, TimestampFormatter.FormatterTask
+            extends Task, FormatterTask
     {
         @Config("apikey")
         public String getApiKey();
