@@ -4,11 +4,12 @@ public class TDApiClientConfig
         implements TDApiConstants
 {
     private String endpoint;
-    //  TODO https settings
+    private boolean useSsl;
 
-    public TDApiClientConfig(String endpoint)
+    public TDApiClientConfig(String endpoint, boolean useSsl)
     {
         this.endpoint = endpoint;
+        this.useSsl = useSsl;
     }
 
     public String getEndpoint()
@@ -19,6 +20,11 @@ public class TDApiClientConfig
     public void setEndpoint(String endpoint)
     {
         this.endpoint = endpoint;
+    }
+
+    public boolean getUseSsl()
+    {
+        return useSsl;
     }
 
     public String getAgentName() {

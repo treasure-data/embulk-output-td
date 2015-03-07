@@ -15,6 +15,7 @@ import org.eclipse.jetty.client.api.Request;
 import org.eclipse.jetty.client.util.StringContentProvider;
 import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.util.HttpCookieStore;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.joda.time.DateTime;
 
 import javax.annotation.PostConstruct;
@@ -48,7 +49,8 @@ public class TDApiClient
         objectMapper = new ObjectMapper();
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-        http = new HttpClient();
+        SslContextFactory sslContextFactory = new SslContextFactory();
+        http = new HttpClient(sslContextFactory);
         http.setConnectTimeout(10 * 1000); //  TODO extract as parameter
         http.setIdleTimeout(60 * 1000); //  TODO extract as parameter
         http.setMaxConnectionsPerDestination(10);  //  TODO extract as parameter
@@ -307,7 +309,7 @@ public class TDApiClient
     private String buildUrl(String path, String... params)
     {
         StringBuilder sb = new StringBuilder();
-        sb.append("http://"); //  TODO
+        sb.append(config.getUseSsl() ? "https://" : "http://");
         sb.append(config.getEndpoint());
         sb.append(path);
         try {

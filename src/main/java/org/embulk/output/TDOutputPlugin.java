@@ -58,7 +58,10 @@ public class TDOutputPlugin
         @Config("table")
         public String getTable();
 
-        //  TODO use_ssl
+        @Config("use_ssl")
+        @ConfigDefault("true")
+        public boolean getUseSsl();
+
         //  TODO http_proxy
         //  TODO connect_timeout, read_timeout, send_timeout
 
@@ -126,7 +129,7 @@ public class TDOutputPlugin
 
     private TDApiClient createTDApiClient(final PluginTask task)
     {
-        TDApiClientConfig config = new TDApiClientConfig(task.getEndpoint());
+        TDApiClientConfig config = new TDApiClientConfig(task.getEndpoint(), task.getUseSsl());
         TDApiClient client = new TDApiClient(config);
         try {
             client.start();
