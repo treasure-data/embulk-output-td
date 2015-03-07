@@ -7,7 +7,6 @@ import com.github.jrubygradle.JRubyExec
 repositories {
     mavenCentral()
     jcenter()
-    mavenLocal() //  TODO use td-client-java 0.6.0-SNAPSHOT
 }
 configurations {
     provided
@@ -18,8 +17,8 @@ version = "0.1.0"
 dependencies {
     compile  "org.embulk:embulk-core:0.5.0"
     provided "org.embulk:embulk-core:0.5.0"
+    compile  "org.eclipse.jetty:jetty-client:9.2.2.v20140723"
     compile  "org.msgpack:msgpack:0.6.7"
-    compile  "com.treasuredata:td-client:0.6.0-SNAPSHOT"
     compile  "com.google.inject:guice:3.0"
     compile  "com.google.inject.extensions:guice-multibindings:3.0"
     compile  "com.google.guava:guava:18.0"
