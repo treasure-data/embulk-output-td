@@ -38,23 +38,38 @@ import java.util.Map;
 public class TDApiClient
         implements Closeable
 {
-    private final TDApiClientConfig config;
-    private final HttpClient http;
+    private final String apikey;
+    private final TDApiClientOptions options;
     private final ObjectMapper objectMapper;
+    private final HttpClient http;
 
-    public TDApiClient(TDApiClientConfig config)
+    public TDApiClient(String apikey, TDApiClientOptions options)
     {
-        this.config = config;
+        this.apikey = apikey;
+        this.options = options;
 
         objectMapper = new ObjectMapper();
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
         SslContextFactory sslContextFactory = new SslContextFactory();
         http = new HttpClient(sslContextFactory);
-        http.setConnectTimeout(10 * 1000); //  TODO extract as parameter
-        http.setIdleTimeout(60 * 1000); //  TODO extract as parameter
-        http.setMaxConnectionsPerDestination(10);  //  TODO extract as parameter
+        http.setConnectTimeout(10 * 1000); //  TODO get from options
+        http.setIdleTimeout(60 * 1000); //  TODO get from options
+        http.setMaxConnectionsPerDestination(10);  //  TODO get from options
         http.setCookieStore(new HttpCookieStore.Empty());
+    }
+
+    private TDApiClient(TDApiClient copy, String apikey)
+    {
+        this.apikey = apikey;
+        this.options = copy.options;
+        this.http = copy.http;
+        this.objectMapper = copy.objectMapper;
+    }
+
+    public TDApiClient withApikey(String apikey)
+    {
+        return new TDApiClient(this, apikey);
     }
 
     @PostConstruct
@@ -77,141 +92,113 @@ public class TDApiClient
         }
     }
 
-    public List<TDDatabase> getDatabases(String apikey)
+    public List<TDDatabase> getDatabases()
     {
-        Request request = prepareExchange(apikey, HttpMethod.GET,
+        Request request = prepareExchange(HttpMethod.GET,
                 buildUrl("/v3/database/list"));
         ContentResponse response = executeExchange(request);
         TDDatabaseList databaseList = parseResponse(response.getContent(), TDDatabaseList.class);
         return databaseList.getDatabases();
     }
 
-    public TDDatabase createDatabase(String apikey, String databaseName)
+    public TDDatabase createDatabase(String databaseName)
     {
-        Request request = prepareExchange(apikey, HttpMethod.POST,
+        Request request = prepareExchange(HttpMethod.POST,
                 buildUrl("/v3/database/create", databaseName));
         ContentResponse response = executeExchange(request);
         TDDatabase database = parseResponse(response.getContent(), TDDatabase.class);
         return database;
     }
 
-    public List<TDTable> getTables(String apikey, String databaseName)
+    public List<TDTable> getTables(String databaseName)
     {
-        Request request = prepareExchange(apikey, HttpMethod.GET,
+        Request request = prepareExchange(HttpMethod.GET,
                 buildUrl("/v3/table/list/", databaseName));
         ContentResponse response = executeExchange(request);
         TDTableList tables = parseResponse(response.getContent(), TDTableList.class);
         return tables.getTables();
     }
 
-    public TDTable createTable(String apikey, String databaseName, String tableName)
-            throws IOException
+    public TDTable createTable(String databaseName, String tableName)
     {
-        Request request = prepareExchange(apikey, HttpMethod.POST,
+        Request request = prepareExchange(HttpMethod.POST,
                 buildUrl("/v3/table/create", databaseName, tableName));
         ContentResponse response = executeExchange(request);
         TDTable table = parseResponse(response.getContent(), TDTable.class);
         return table;
     }
 
-    public void deleteTable(String apikey, String databaseName, String tableName)
-            throws IOException
+    public void deleteTable(String databaseName, String tableName)
     {
-        Request request = prepareExchange(apikey, HttpMethod.POST,
+        Request request = prepareExchange(HttpMethod.POST,
                 buildUrl("/v3/table/delete", databaseName, tableName));
         ContentResponse response = executeExchange(request);
-        String content = new String(response.getContent());
     }
 
-    public String createBulkImportSession(String apikey, String databaseName, String tableName)
-            throws IOException
+    public void createBulkImportSession(String sessionName, String databaseName, String tableName)
     {
-        DateTime d = new DateTime();
-        String sessionName = String.format("%s_%s_%04d_%02d_%02d_%d", databaseName, tableName,
-                d.getYear(), d.getMonthOfYear(), d.getDayOfMonth(), d.getMillis());
-        createBulkImportSession(apikey, sessionName, databaseName, tableName);
-        return sessionName;
-    }
-
-    public void createBulkImportSession(String apikey, String sessionName, String databaseName, String tableName)
-            throws IOException
-    {
-        Request request = prepareExchange(apikey, HttpMethod.POST,
+        Request request = prepareExchange(HttpMethod.POST,
                 buildUrl("/v3/bulk_import/create", sessionName, databaseName, tableName));
         ContentResponse response = executeExchange(request);
-        String content = new String(response.getContent());
-        return;
+        // TODO return TDBulkImportSession
     }
 
-    public TDBulkImportSession getBulkImportSession(String apikey, String sessionName)
-            throws IOException
+    public TDBulkImportSession getBulkImportSession(String sessionName)
     {
-        Request request = prepareExchange(apikey, HttpMethod.GET,
+        Request request = prepareExchange(HttpMethod.GET,
                 buildUrl("/v3/bulk_import/show", sessionName));
         ContentResponse response = executeExchange(request);
-        TDBulkImportSession session = objectMapper.readValue(response.getContent(), TDBulkImportSession.class);
+        TDBulkImportSession session = parseResponse(response.getContent(), TDBulkImportSession.class);
         return session;
     }
 
-    public boolean uploadBulkImport(String apiKey, String sessionName, File path)
+    public void uploadBulkImport(String sessionName, File path)
             throws IOException
     {
         String name = path.getName().replace(".", "_");
-        Request request = prepareExchange(apiKey, HttpMethod.PUT,
+        Request request = prepareExchange(HttpMethod.PUT,
                 buildUrl("/v3/bulk_import/upload_part", sessionName, name));
         request.file(path.toPath());
         ContentResponse response = executeExchange(request);
-        String content = new String(response.getContent());
-        return true;
     }
 
-    public boolean freezeBulkImportSession(String apikey, String sessionName)
-            throws IOException
+    public void freezeBulkImportSession(String sessionName)
     {
-        Request request = prepareExchange(apikey, HttpMethod.POST,
+        Request request = prepareExchange(HttpMethod.POST,
                 buildUrl("/v3/bulk_import/freeze", sessionName));
         ContentResponse response = executeExchange(request);
-        String content = new String(response.getContent());
-        return true;
     }
 
-    public boolean performBulkImportSession(String apikey, String sessionName, int priority)
-            throws IOException
+    public void performBulkImportSession(String sessionName, int priority)
     {
-        Request request = prepareExchange(apikey, HttpMethod.POST,
+        Request request = prepareExchange(HttpMethod.POST,
                 buildUrl("/v3/bulk_import/perform", sessionName),
                 ImmutableMap.<String, String>of(),
                 ImmutableMap.of("priority", String.valueOf(priority)));
         ContentResponse response = executeExchange(request);
-        String content = new String(response.getContent());
-        return true;
     }
 
-    public void commitBulkImportSession(String apikey, String sessionName)
-            throws IOException
+    public void commitBulkImportSession(String sessionName)
     {
-        Request request = prepareExchange(apikey, HttpMethod.POST,
+        Request request = prepareExchange(HttpMethod.POST,
                 buildUrl("/v3/bulk_import/commit", sessionName));
         ContentResponse response = executeExchange(request);
-        String content = new String(response.getContent());
     }
 
-    public void deleteBulkImportSession(String apikey, String sessionName)
-            throws IOException
+    public void deleteBulkImportSession(String sessionName)
     {
-        Request request = prepareExchange(apikey, HttpMethod.POST,
+        Request request = prepareExchange(HttpMethod.POST,
                 buildUrl("/v3/bulk_import/delete", sessionName));
         ContentResponse response = executeExchange(request);
-        String content = new String(response.getContent());
     }
 
-    private Request prepareExchange(String apikey, HttpMethod method, String url)
+    private Request prepareExchange(HttpMethod method, String url)
     {
-        return prepareExchange(apikey, method, url, Collections.<String,String>emptyMap(),
+        return prepareExchange(method, url, Collections.<String,String>emptyMap(),
                 Collections.<String,String>emptyMap());
     }
 
-    private Request prepareExchange(String apikey, HttpMethod method,
+    private Request prepareExchange(HttpMethod method,
                                     String url, Map<String, String> headers,
                                     Map<String, String> query)
     {
@@ -229,7 +216,7 @@ public class TDApiClient
         }
         Request request = http.newRequest(url);
         request.method(method);
-        request.agent(config.getAgentName());
+        request.agent(options.getAgentName());
         request.header("Authorization", "TD1 " + apikey);
         //request.timeout(60, TimeUnit.SECONDS);
         for (Map.Entry<String, String> entry: headers.entrySet()) {
@@ -309,8 +296,8 @@ public class TDApiClient
     private String buildUrl(String path, String... params)
     {
         StringBuilder sb = new StringBuilder();
-        sb.append(config.getUseSsl() ? "https://" : "http://");
-        sb.append(config.getEndpoint());
+        sb.append(options.getUseSsl() ? "https://" : "http://");
+        sb.append(options.getEndpoint());
         sb.append(path);
         try {
             for (String param : params) {

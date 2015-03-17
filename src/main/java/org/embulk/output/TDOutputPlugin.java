@@ -6,9 +6,8 @@ import java.util.List;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.google.inject.Inject;
-import com.google.inject.Injector;
 import com.treasuredata.api.TDApiClient;
-import com.treasuredata.api.TDApiClientConfig;
+import com.treasuredata.api.TDApiClientOptions;
 import com.treasuredata.api.TDApiConflictException;
 import com.treasuredata.api.TDApiException;
 import com.treasuredata.api.TDApiNotFoundException;
@@ -16,6 +15,7 @@ import com.treasuredata.api.model.TDBulkImportSession;
 import com.treasuredata.api.model.TDBulkImportSession.ImportStatus;
 import com.treasuredata.api.model.TDDatabase;
 import com.treasuredata.api.model.TDTable;
+import org.joda.time.format.DateTimeFormat;
 import org.embulk.config.CommitReport;
 import org.embulk.config.Config;
 import org.embulk.config.ConfigDefault;
@@ -24,9 +24,11 @@ import org.embulk.config.ConfigSource;
 import org.embulk.config.Task;
 import org.embulk.config.TaskSource;
 import org.embulk.spi.Exec;
+import org.embulk.spi.ExecSession;
 import org.embulk.spi.OutputPlugin;
 import org.embulk.spi.Schema;
 import org.embulk.spi.TransactionalPageOutput;
+import org.embulk.spi.time.Timestamp;
 import org.embulk.spi.time.TimestampFormatter.FormatterTask;
 import org.slf4j.Logger;
 
@@ -42,22 +44,6 @@ public class TDOutputPlugin
         @Config("endpoint")
         public String getEndpoint();
 
-        @Config("session")
-        @ConfigDefault("null")
-        public Optional<String> getSession();
-        public void setSession(String session);
-
-        @Config("auto_create_table")
-        @ConfigDefault("true")
-        public boolean getAutoCreateTable();
-
-
-        @Config("database")
-        public String getDatabase();
-
-        @Config("table")
-        public String getTable();
-
         @Config("use_ssl")
         @ConfigDefault("true")
         public boolean getUseSsl();
@@ -65,72 +51,105 @@ public class TDOutputPlugin
         //  TODO http_proxy
         //  TODO connect_timeout, read_timeout, send_timeout
 
+        @Config("auto_create_table")
+        @ConfigDefault("true")
+        public boolean getAutoCreateTable();
+
+        @Config("database")
+        public String getDatabase();
+
+        @Config("table")
+        public String getTable();
+
+        @Config("session")
+        @ConfigDefault("null")
+        public Optional<String> getSession();
+
         @Config("tmpdir")
         @ConfigDefault("/tmp")
         public String getTempDir();
+
+        public boolean getDoUpload();
+        public void setDoUpload(boolean doUpload);
+
+        public String getSessionName();
+        public void setSessionName(String session);
     }
 
-    private final Injector injector;
     private final Logger log;
 
     @Inject
-    public TDOutputPlugin(Injector injector)
+    public TDOutputPlugin()
     {
-        this.injector = injector;
         this.log = Exec.getLogger(getClass());
     }
 
     public ConfigDiff transaction(final ConfigSource config, final Schema schema, int processorCount,
                                   OutputPlugin.Control control)
     {
-        final PluginTask task = config.loadConfig(PluginTask.class);
-        final TDApiClient client = createTDApiClient(task);
-        try {
-            // check if the database and/or table exist or not
-            getOrCreateDatabase(task, client);
-            getOrCreateTable(task, client);
+        PluginTask task = config.loadConfig(PluginTask.class);
 
-            //  check MessagePackRecordOutput configuration before transaction is started
-            createMessagePackPageOutput(task, schema, client);
+        task.setSessionName(buildBulkImportSessionName(task, Exec.session()));
 
-            //  TODO should change the behavior of the method with 'getOrCreateBulkImportSession'
-            final String sessionName = newBulkImportSession(task, client);
-            task.setSession(sessionName);
-            //  TODO check the status of the session
+        try (TDApiClient client = newTDApiClient(task)) {
+            String databaseName = task.getDatabase();
+            String tableName = task.getTable();
+            if (task.getAutoCreateTable()) {
+                createDatabaseIfNotExists(client, databaseName);
+                createTableIfNotExists(client, databaseName, tableName);
+            } else {
+                // check if the database and/or table exist or not
+                if (!checkDatabaseExists(client, databaseName)) {
+                    log.debug("Database '{}' doesn't exist", databaseName);
+                    throw new TDApiException(String.format("Database '%s' doesn't exist", databaseName));
+                }
+                if (!checkTableExists(client, databaseName, tableName)) {
+                    log.debug("Table {}.{} doesn't exist", databaseName, tableName);
+                    throw new TDApiException(String.format("Table %s.%s doesn't exist", databaseName, tableName));
+                }
+            }
 
-            //  TODO retryable (idempotent) output:
-            //  TODO return resume(task.dump(), schema, processorCount, control);
+            // validate MessagePackRecordOutput configuration before transaction is started
+            createMessagePackPageOutput(task, schema, client).close();
 
-            control.run(task.dump()); //  TODO upload part files
-
-            commitBulkImportSession(task, client, sessionName);
-
-        } finally {
-            client.close();
+            return doRun(client, task, control);
         }
-
-        ConfigDiff configDiff = Exec.newConfigDiff();
-        return configDiff;
     }
 
     public ConfigDiff resume(TaskSource taskSource,
             Schema schema, int processorCount,
             OutputPlugin.Control control)
     {
-        throw new UnsupportedOperationException("td output plugin does not support the resume feature yet.");
+        PluginTask task = taskSource.loadTask(PluginTask.class);
+
+        try (TDApiClient client = newTDApiClient(task)) {
+            return doRun(client, task, control);
+        }
+    }
+
+    private ConfigDiff doRun(TDApiClient client, PluginTask task, OutputPlugin.Control control)
+    {
+        boolean doUpload = startBulkImportSession(client, task.getSessionName(), task.getDatabase(), task.getTable());
+        task.setDoUpload(doUpload);
+
+        control.run(task.dump());
+
+        completeBulkImportSession(client, task.getSessionName(), 0);  // TODO perform job priority
+
+        return Exec.newConfigDiff();
     }
 
     public void cleanup(TaskSource taskSource,
             Schema schema, int processorCount,
             List<CommitReport> successCommitReports)
     {
-        //  TODO
+        // TODO delete last_session
     }
 
-    private TDApiClient createTDApiClient(final PluginTask task)
+    private TDApiClient newTDApiClient(final PluginTask task)
     {
-        TDApiClientConfig config = new TDApiClientConfig(task.getEndpoint(), task.getUseSsl());
-        TDApiClient client = new TDApiClient(config);
+        TDApiClientOptions config = new TDApiClientOptions(task.getEndpoint(), task.getUseSsl());
+        TDApiClient client = new TDApiClient(task.getApiKey(), config);
         try {
             client.start();
         } catch (IOException e) {
@@ -139,175 +158,180 @@ public class TDOutputPlugin
         return client;
     }
 
-    private void getOrCreateDatabase(final PluginTask task, final TDApiClient client)
+    private void createDatabaseIfNotExists(TDApiClient client, String databaseName)
     {
-        final String apikey = task.getApiKey();
-        final String databaseName = task.getDatabase();
-
-        boolean exists = false;
-        List<TDDatabase> dbs = client.getDatabases(apikey);
-        for (TDDatabase db : dbs) {
-            if (db.getName().equals(databaseName)) {
-                exists = true;
-                break;
-            }
-        }
-
-        if (exists) {
-            // if the database exists, it returns normally.
-            log.info("Database {} exists", databaseName);
+        if (checkDatabaseExists(client, databaseName)) {
+            log.debug("Database '{}' exists", databaseName);
             return;
+        }
 
-        } else if (!task.getAutoCreateTable()) {
-            // if the database doesn't exist and auto_create_table is false, it throws an exception.
-            log.error("Database {} doesn't exist", databaseName);
-            throw new TDApiException(String.format("Database %s doesn't exist", databaseName));
-
-        } else {
-            // if auto_create_table flag is true, it creates new database with the name.
-            log.info("Create database {} because it doesn't exist", databaseName);
-            try {
-                client.createDatabase(apikey, databaseName);
-            } catch (TDApiConflictException e) {
-                // ignore
-            }
+        log.info("Creating database '{}'", databaseName);
+        try {
+            client.createDatabase(databaseName);
+        } catch (TDApiConflictException e) {
+            // ignorable error
         }
     }
 
-    private void getOrCreateTable(final PluginTask task, final TDApiClient client)
+    private void createTableIfNotExists(TDApiClient client, String databaseName, String tableName)
     {
-        final String apikey = task.getApiKey();
-        final String databaseName = task.getDatabase();
-        final String tableName = task.getTable();
-
-        boolean exists = false;
-        List<TDTable> tables = client.getTables(apikey, databaseName);
-        for (TDTable table : tables) {
-            if (table.getName().equals(tableName)) {
-                exists = true;
-                break;
-            }
-        }
-
-        if (exists) {
-            // if the table exists, it returns normally.
-            log.info("Table {}.{} exists", databaseName, tableName);
+        if (checkTableExists(client, databaseName, tableName)) {
+            log.debug("Table {}.{} exists", databaseName, tableName);
             return;
-
-        } else if (!task.getAutoCreateTable()) {
-            // if the table doesn't exist and the auto_create_table is false, it throws an exception.
-            log.info("Table {}.{} doesn't exist", databaseName, tableName);
-            throw new TDApiException(String.format("Table %s.%s doesn't exist", databaseName, tableName));
-
-        } else {
-            // if auto_create_table flag is true, it creates new table with the name.
-            log.info("Create table {}.{} because it doesn't exist", databaseName, tableName);
-            try {
-                client.createTable(apikey, databaseName, tableName);
-            } catch (TDApiConflictException e) {
-                // ignore
-
-            } catch (IOException e) {
-                throw Throwables.propagate(e);
-
-            }
         }
-    }
 
-    private String newBulkImportSession(final PluginTask task, final TDApiClient client)
-    {
-        final String apikey = task.getApiKey();
-        final String databaseName = task.getDatabase();
-        final String tableName = task.getTable();
-        final Optional<String> sessionName = task.getSession();
+        log.info("Create table {}.{} because it doesn't exist", databaseName, tableName);
         try {
-            if (sessionName.isPresent()) {
-                client.createBulkImportSession(apikey, sessionName.get(), databaseName, tableName);
-                return sessionName.get();
-            } else {
-                return client.createBulkImportSession(apikey, databaseName, tableName);
-            }
-
-        } catch (IOException e) {
-            throw Throwables.propagate(e);
-        }
-    }
-
-    private void commitBulkImportSession(final PluginTask task, final TDApiClient client, final String sessionName)
-    {
-        final String apikey = task.getApiKey();
-
-        TDBulkImportSession importSession;
-
-        try {
-            client.freezeBulkImportSession(apikey, sessionName);
+            client.createTable(databaseName, tableName);
         } catch (TDApiConflictException e) {
             // ignore
-        } catch (IOException e) {
-            throw Throwables.propagate(e);
         }
-
-        try {
-            client.performBulkImportSession(apikey, sessionName, 0); // TODO: priority
-        } catch (IOException e) {
-            // check performing status anyway
-        }
-        importSession = waitCondition(client, apikey, sessionName, ImportStatus.READY, ImportStatus.PERFORMING);
-        if (importSession.isPeformError()) {
-            throw new RuntimeException("Data Import failed : " + importSession.getErrorMessage());
-        }
-
-        //  TODO check error_records
-
-        try {
-            client.commitBulkImportSession(apikey, sessionName);
-        } catch (IOException e) {
-            throw Throwables.propagate(e);
-        }
-        waitCondition(client, apikey, sessionName, ImportStatus.COMMITTED, ImportStatus.COMMITTING);
-
-        //  should not delete session
     }
 
-    private TDBulkImportSession waitCondition(final TDApiClient client, final String apikey, final String sessionName,
-                                              final ImportStatus expecting, final ImportStatus current)
+    private boolean checkDatabaseExists(TDApiClient client, String name)
     {
-        TDBulkImportSession importSession = null;
-        try {
-            importSession = client.getBulkImportSession(apikey, sessionName);
-        } catch (IOException e) {
-            throw Throwables.propagate(e);
+        for (TDDatabase db : client.getDatabases()) {
+            if (db.getName().equals(name)) {
+                return true;
+            }
         }
+        return false;
+    }
+
+    private boolean checkTableExists(TDApiClient client, String databaseName, String tableName)
+    {
+        for (TDTable table : client.getTables(databaseName)) {
+            if (table.getName().equals(tableName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String buildBulkImportSessionName(PluginTask task, ExecSession exec)
+    {
+        if (task.getSession().isPresent()) {
+            return task.getSession().get();
+        } else {
+            // TODO implement Exec.getTransactionUniqueName()
+            Timestamp time = exec.getTransactionTime();
+            return DateTimeFormat.forPattern("embulk_yyyyMMdd_HHmmss_").withZoneUTC()
+                .print(time.getEpochSecond() * 1000)
+                + String.format("%09d", time.getNano());
+        }
+    }
+
+    // return false if all files are already uploaded
+    private boolean startBulkImportSession(TDApiClient client,
+            String sessionName, String databaseName, String tableName)
+    {
+        TDBulkImportSession session;
+        try {
+            client.createBulkImportSession(sessionName, databaseName, tableName);
+        } catch (TDApiConflictException ex) {
+            // ignorable error
+        }
+        session = client.getBulkImportSession(sessionName);
+        // TODO check associated databaseName and tableName
+
+        switch (session.getStatus()) {
+        case UPLOADING:
+            if (session.getUploadFrozen()) {
+                return false;
+            }
+            return true;
+        case PERFORMING:
+            return false;
+        case READY:
+            return false;
+        case COMMITTING:
+            return false;
+        case COMMITTED:
+            return false;
+        case UNKNOWN:
+        default:
+            throw new RuntimeException("Unknown bulk import status");
+        }
+    }
+
+    private void completeBulkImportSession(TDApiClient client, String sessionName, int priority)
+    {
+        TDBulkImportSession session = client.getBulkImportSession(sessionName);
+
+        switch (session.getStatus()) {
+        case UPLOADING:
+            if (!session.getUploadFrozen()) {
+                // freeze
+                try {
+                    client.freezeBulkImportSession(sessionName);
+                } catch (TDApiConflictException e) {
+                    // ignorable error
+                }
+            }
+            // perform
+            client.performBulkImportSession(sessionName, priority);
+
+            // pass
+        case PERFORMING:
+            log.info("Performing bulk import session '{}'", sessionName);
+            session = waitForStatusChange(client, sessionName,
+                    ImportStatus.PERFORMING, ImportStatus.READY,
+                    "perform");
+            log.info("    job id: ", session.getJobId());
+
+            // pass
+        case READY:
+            // TODO add an option to make the transaction failed if error_records or error_parts is too large
+            // commit
+            log.info("Committing bulk import session '{}'", sessionName);
+            log.info("    valid records: ", session.getValidRecords());
+            log.info("    error records: ", session.getErrorRecords());
+            log.info("    valid parts: ", session.getValidParts());
+            log.info("    error parts: ", session.getErrorParts());
+            client.commitBulkImportSession(sessionName);
+
+            // pass
+        case COMMITTING:
+            session = waitForStatusChange(client, sessionName,
+                    ImportStatus.COMMITTING, ImportStatus.COMMITTED,
+                    "commit");
+
+            // pass
+        case COMMITTED:
+            return;
+
+        case UNKNOWN:
+            throw new RuntimeException("Unknown bulk import status");
+        }
+    }
+
+    private TDBulkImportSession waitForStatusChange(TDApiClient client, String sessionName,
+            ImportStatus current, ImportStatus expecting, String operation)
+    {
+        TDBulkImportSession importSession;
         while (true) {
+            importSession = client.getBulkImportSession(sessionName);
+
             if (importSession.is(expecting)) {
-                break;
-            }
-            else if (importSession.is(current)) {
-                // still working
-            }
-            else {
-                throw new RuntimeException("Data Import failed : " + expecting);
+                return importSession;
+            } else if (importSession.is(current)) {
+                // in progress
+            } else {
+                throw new RuntimeException(String.format("Failed to %s bulk import session '%s'",
+                            operation, sessionName));
             }
 
             try {
                 Thread.sleep(3000);
             } catch (InterruptedException e) {
             }
-
-            try {
-                importSession = client.getBulkImportSession(apikey, sessionName);
-            } catch (IOException e) {
-                throw Throwables.propagate(e);
-            }
         }
-
-        return importSession;
     }
 
     public TransactionalPageOutput open(final TaskSource taskSource, final Schema schema, int processorIndex)
     {
         final PluginTask task = taskSource.loadTask(PluginTask.class);
-        final TDApiClient client = createTDApiClient(task);
+        final TDApiClient client = newTDApiClient(task);
 
         MessagePackPageOutput pageOutput = createMessagePackPageOutput(task, schema, client);
         try {

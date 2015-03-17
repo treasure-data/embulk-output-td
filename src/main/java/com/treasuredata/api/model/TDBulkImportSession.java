@@ -35,7 +35,7 @@ public class TDBulkImportSession
     private final ImportStatus status;
 
     private final boolean uploadFrozen;
-    private final String jobID; // nullable
+    private final String jobId; // nullable
     private final long validRecords;
     private final long errorRecords;
     private final long validParts;
@@ -48,7 +48,7 @@ public class TDBulkImportSession
             @JsonProperty("table") String tableName,
             @JsonProperty("status") ImportStatus status,
             @JsonProperty("upload_frozen") boolean uploadFrozen,
-            @JsonProperty("job_id") String jobID,
+            @JsonProperty("job_id") String jobId,
             @JsonProperty("valid_records") long validRecords,
             @JsonProperty("error_records") long errorRecords,
             @JsonProperty("valid_parts") long validParts,
@@ -59,7 +59,7 @@ public class TDBulkImportSession
         this.tableName = tableName;
         this.status = status;
         this.uploadFrozen = uploadFrozen;
-        this.jobID = jobID;
+        this.jobId = jobId;
         this.validRecords = validRecords;
         this.errorRecords = errorRecords;
         this.validParts = validParts;
@@ -72,13 +72,13 @@ public class TDBulkImportSession
         return name;
     }
 
-    @JsonProperty
+    @JsonProperty("database")
     public String getDatabaseName()
     {
         return databaseName;
     }
 
-    @JsonProperty
+    @JsonProperty("table")
     public String getTableName()
     {
         return tableName;
@@ -90,10 +90,40 @@ public class TDBulkImportSession
         return status;
     }
 
-    @JsonProperty
+    @JsonProperty("upload_frozen")
     public boolean getUploadFrozen()
     {
         return uploadFrozen;
+    }
+
+    @JsonProperty("job_id")
+    public String getJobId()
+    {
+        return jobId;
+    }
+
+    @JsonProperty("valid_records")
+    public long getValidRecords()
+    {
+        return validRecords;
+    }
+
+    @JsonProperty("error_records")
+    public long getErrorRecords()
+    {
+        return errorRecords;
+    }
+
+    @JsonProperty("valid_parts")
+    public long getValidParts()
+    {
+        return validParts;
+    }
+
+    @JsonProperty("error_parts")
+    public long getErrorParts()
+    {
+        return errorParts;
     }
 
     public boolean isUploading()

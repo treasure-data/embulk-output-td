@@ -155,7 +155,7 @@ public class MessagePackPageOutput
             throws IOException
     {
         checkNotNull(builder);
-        client.uploadBulkImport(task.getApiKey(), task.getSession().get(), builder.getFile());
+        client.uploadBulkImport(task.getSessionName(), builder.getFile());
     }
 
     @Override
