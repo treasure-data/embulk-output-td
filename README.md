@@ -10,22 +10,22 @@ TODO: Write short description here
 
 ## Configuration
 
-- **endpoint**: hostname (string, required)
 - **apikey**: apikey (string, required)
-- **session**: bulk_import session name (string, optional)
+- **endpoint**: hostname (string, required)
+- **use_ssl**: the flag (boolean, default=true)
+- **auto_create_table**: the flag for creating the database and/or the table if they don't exist (boolean, default=true)
 - **database**: database name (string, required)
 - **table**: table name (string, required)
-- **auto_create_table**: the flag for creating the database and/or the table if they don't exist (boolean, default=true)
-- **use_ssl**: the flag (boolean, default=true)
+- **session**: bulk_import session name (string, optional)
+- **tmpdir**: temporal directory
 
 ## Example
 
 ```yaml
 out:
   type: td
-  endpoint: api.treasuredata.com
   apikey: <your apikey>
-  session: <session name>
+  endpoint: api.treasuredata.com
   database: <db name>
   table: <table name>
 ```
