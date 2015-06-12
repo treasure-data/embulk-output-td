@@ -50,6 +50,7 @@ public class MessagePackGZFileBuilder
 
     public long getEstimatedFileSize()
     {
+        // TODO it should extend FilterOutputStream and estimate the file size more better
         return file.length();
     }
 

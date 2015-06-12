@@ -2,10 +2,10 @@ package com.treasuredata.api;
 
 import java.util.concurrent.TimeoutException;
 
-public class TDApiExecutionTimeoutException
-        extends TDApiExecutionException
+public class TdApiExecutionTimeoutException
+        extends TdApiExecutionException
 {
-    public TDApiExecutionTimeoutException(TimeoutException cause)
+    public TdApiExecutionTimeoutException(TimeoutException cause)
     {
         super(cause);
     }

@@ -1,9 +1,9 @@
 package com.treasuredata.api;
 
-public class TDApiExecutionInterruptedException
-        extends TDApiExecutionException
+public class TdApiExecutionInterruptedException
+        extends TdApiExecutionException
 {
-    public TDApiExecutionInterruptedException(InterruptedException cause)
+    public TdApiExecutionInterruptedException(InterruptedException cause)
     {
         super(cause);
     }

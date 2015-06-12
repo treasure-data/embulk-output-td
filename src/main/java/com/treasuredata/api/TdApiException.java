@@ -1,19 +1,19 @@
 package com.treasuredata.api;
 
-public class TDApiException
+public class TdApiException
         extends RuntimeException
 {
-    public TDApiException(String message)
+    public TdApiException(String message)
     {
         super(message);
     }
 
-    public TDApiException(Throwable cause)
+    public TdApiException(Throwable cause)
     {
         super(cause);
     }
 
-    public TDApiException(String message, Throwable cause)
+    public TdApiException(String message, Throwable cause)
     {
         super(message, cause);
     }

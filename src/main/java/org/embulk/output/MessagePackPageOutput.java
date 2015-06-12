@@ -1,14 +1,14 @@
 package org.embulk.output;
 
 import com.google.common.base.Throwables;
-import com.treasuredata.api.TDApiClient;
+import com.treasuredata.api.TdApiClient;
 import org.embulk.config.CommitReport;
 import org.embulk.output.writer.BooleanFieldWriter;
 import org.embulk.output.writer.DoubleFieldWriter;
 import org.embulk.output.writer.LongFieldWriter;
 import org.embulk.output.writer.StringFieldWriter;
 import org.embulk.output.writer.TimestampFieldWriter;
-import org.embulk.output.TDOutputPlugin.PluginTask;
+import org.embulk.output.TdOutputPlugin.PluginTask;
 import org.embulk.spi.Column;
 import org.embulk.spi.ColumnVisitor;
 import org.embulk.spi.Exec;
@@ -32,7 +32,7 @@ public class MessagePackPageOutput
 
     private final Logger log;
     private final PluginTask task;
-    private final TDApiClient client;
+    private final TdApiClient client;
 
     private final MessagePack msgpack;
     private final MessagePackRecordOutput recordOutput;
@@ -41,7 +41,7 @@ public class MessagePackPageOutput
     private PageReader pageReader;
     private MessagePackGZFileBuilder builder;
 
-    MessagePackPageOutput(final PluginTask task, final TDApiClient client, final MessagePackRecordOutput recordOutput)
+    MessagePackPageOutput(final PluginTask task, final TdApiClient client, final MessagePackRecordOutput recordOutput)
     {
         log = Exec.getLogger(getClass());
         this.task = checkNotNull(task);

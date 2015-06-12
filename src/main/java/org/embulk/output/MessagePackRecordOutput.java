@@ -1,7 +1,6 @@
 package org.embulk.output;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Throwables;
 import org.embulk.output.writer.BooleanFieldWriter;
 import org.embulk.output.writer.DoubleFieldWriter;
 import org.embulk.output.writer.FieldWriter;
@@ -18,7 +17,7 @@ import org.embulk.spi.time.TimestampFormatter;
 import org.embulk.spi.type.TimestampType;
 import org.embulk.spi.type.Type;
 import org.msgpack.type.MapValue;
-import org.embulk.output.TDOutputPlugin.PluginTask;
+import org.embulk.output.TdOutputPlugin.PluginTask;
 import org.msgpack.type.Value;
 
 import java.io.IOException;

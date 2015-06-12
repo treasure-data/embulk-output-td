@@ -1,6 +1,7 @@
 package com.treasuredata.api;
 
-public class TDApiClientOptions
+public class TdApiClientConfig
+        implements TdApiConstants
 {
     private String endpoint;
     private boolean useSsl;
@@ -8,7 +9,7 @@ public class TDApiClientOptions
     // TODO Builder
     // TODO clone
 
-    public TDApiClientOptions(String endpoint, boolean useSsl)
+    public TdApiClientConfig(String endpoint, boolean useSsl)
     {
         this.endpoint = endpoint;
         this.useSsl = useSsl;
@@ -29,8 +30,7 @@ public class TDApiClientOptions
         return useSsl;
     }
 
-    public String getAgentName()
-    {
-        return "TDApiClient v0.6";
+    public String getAgentName() {
+        return AGENT_NAME;
     }
 }

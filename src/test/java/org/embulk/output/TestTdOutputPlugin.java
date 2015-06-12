@@ -1,5 +1,5 @@
 package org.embulk.output;
 
-public class TestTDOutputPlugin
+public class TestTdOutputPlugin
 {
 }

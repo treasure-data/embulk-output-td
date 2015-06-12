@@ -16,7 +16,6 @@ import org.eclipse.jetty.client.util.StringContentProvider;
 import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.util.HttpCookieStore;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
-import org.joda.time.DateTime;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -35,18 +34,18 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-public class TDApiClient
+public class TdApiClient
         implements Closeable
 {
-    private final String apikey;
-    private final TDApiClientOptions options;
-    private final ObjectMapper objectMapper;
+    private final String apiKey;
+    private final TdApiClientConfig config;
     private final HttpClient http;
+    private final ObjectMapper objectMapper;
 
-    public TDApiClient(String apikey, TDApiClientOptions options)
+    public TdApiClient(String apiKey, TdApiClientConfig config)
     {
-        this.apikey = apikey;
-        this.options = options;
+        this.apiKey = apiKey;
+        this.config = config;
 
         objectMapper = new ObjectMapper();
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -59,17 +58,17 @@ public class TDApiClient
         http.setCookieStore(new HttpCookieStore.Empty());
     }
 
-    private TDApiClient(TDApiClient copy, String apikey)
+    private TdApiClient(TdApiClient copy, String apiKey)
     {
-        this.apikey = apikey;
-        this.options = copy.options;
+        this.apiKey = apiKey;
+        this.config = copy.config;
         this.http = copy.http;
         this.objectMapper = copy.objectMapper;
     }
 
-    public TDApiClient withApikey(String apikey)
+    public TdApiClient withApikey(String apikey)
     {
-        return new TDApiClient(this, apikey);
+        return new TdApiClient(this, apikey);
     }
 
     @PostConstruct
@@ -129,6 +128,7 @@ public class TDApiClient
     }
 
     public void deleteTable(String databaseName, String tableName)
+            throws IOException
     {
         Request request = prepareExchange(HttpMethod.POST,
                 buildUrl("/v3/table/delete", databaseName, tableName));
@@ -216,8 +216,8 @@ public class TDApiClient
         }
         Request request = http.newRequest(url);
         request.method(method);
-        request.agent(options.getAgentName());
-        request.header("Authorization", "TD1 " + apikey);
+        request.agent(config.getAgentName());
+        request.header("Authorization", "TD1 " + apiKey);
         //request.timeout(60, TimeUnit.SECONDS);
         for (Map.Entry<String, String> entry: headers.entrySet()) {
             request.header(entry.getKey(), entry.getValue());
@@ -296,8 +296,8 @@ public class TDApiClient
     private String buildUrl(String path, String... params)
     {
         StringBuilder sb = new StringBuilder();
-        sb.append(options.getUseSsl() ? "https://" : "http://");
-        sb.append(options.getEndpoint());
+        sb.append(config.getUseSsl() ? "https://" : "http://");
+        sb.append(config.getEndpoint());
         sb.append(path);
         try {
             for (String param : params) {
@@ -329,19 +329,19 @@ public class TDApiClient
                     case 200:
                         return response;
                     case 404:
-                        throw new TDApiNotFoundException(status, response.getContent());
+                        throw new TdApiNotFoundException(status, response.getContent());
                     case 409:
-                        throw new TDApiConflictException(status, response.getContent());
+                        throw new TdApiConflictException(status, response.getContent());
                     }
 
                     if (status / 100 != 5) {  // not 50x
-                        throw new TDApiResponseException(status, response.getContent());
+                        throw new TdApiResponseException(status, response.getContent());
                     }
 
                     // retry on 50x and other errors
-                    exception = new TDApiResponseException(status, response.getContent());
+                    exception = new TdApiResponseException(status, response.getContent());
 
-                } catch (TDApiException e) {
+                } catch (TdApiException e) {
                     throw e;
 
                 } catch (Exception e) {
@@ -354,10 +354,10 @@ public class TDApiClient
                 }
 
                 if (retryLimit <= 0) {
-                    if (firstException instanceof TDApiException) {
-                        throw (TDApiException) firstException;
+                    if (firstException instanceof TdApiException) {
+                        throw (TdApiException) firstException;
                     }
-                    throw new TDApiExecutionException(firstException);
+                    throw new TdApiExecutionException(firstException);
                 }
 
                 retryLimit -= 1;
@@ -365,7 +365,7 @@ public class TDApiClient
                 retryWait *= 2;
             }
         } catch (InterruptedException e) {
-            throw new TDApiExecutionInterruptedException(e);
+            throw new TdApiExecutionInterruptedException(e);
         }
     }
 
