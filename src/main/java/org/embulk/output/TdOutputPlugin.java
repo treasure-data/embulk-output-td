@@ -162,7 +162,7 @@ public class TdOutputPlugin
         try (TdApiClient client = newTdApiClient(task)) {
             String sessionName = task.getSessionName();
             log.info("Deleting bulk import session '{}'", sessionName);
-            //client.deleteBulkImportSession(sessionName);
+            client.deleteBulkImportSession(sessionName);
         }
     }
 
@@ -244,7 +244,7 @@ public class TdOutputPlugin
     private boolean startBulkImportSession(TdApiClient client,
             String sessionName, String databaseName, String tableName)
     {
-        log.debug("Create bulk_import session {}", sessionName);
+        log.info("Create bulk_import session {}", sessionName);
         TDBulkImportSession session;
         try {
             client.createBulkImportSession(sessionName, databaseName, tableName);
