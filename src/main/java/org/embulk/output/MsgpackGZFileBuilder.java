@@ -1,6 +1,5 @@
 package org.embulk.output;
 
-import org.embulk.spi.time.Timestamp;
 import org.msgpack.MessagePack;
 import org.msgpack.packer.Packer;
 
@@ -33,7 +32,6 @@ public class MsgpackGZFileBuilder
 
         @Override
         public void close() throws IOException {
-            size = 0; // Refresh
             super.close();
         }
 

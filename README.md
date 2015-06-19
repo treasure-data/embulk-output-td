@@ -11,7 +11,7 @@ TODO: Write short description here
 ## Configuration
 
 - **apikey**: apikey (string, required)
-- **endpoint**: hostname (string, required)
+- **endpoint**: hostname (string, default='api.treasuredata.com')
 - **use_ssl**: the flag (boolean, default=true)
 - **auto_create_table**: the flag for creating the database and/or the table if they don't exist (boolean, default=true)
 - **database**: database name (string, required)
@@ -19,6 +19,8 @@ TODO: Write short description here
 - **session**: bulk_import session name (string, optional)
 - **time_column**: user-defined time column (string, optional)
 - **tmpdir**: temporal directory
+- **upload_concurrency**: upload concurrency (int, default=2). max concurrency is 8.
+- **file_split_size**: split size (long, default=16384 (16MB)).
 
 ## Example
 

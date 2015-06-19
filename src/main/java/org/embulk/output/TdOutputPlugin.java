@@ -42,6 +42,7 @@ public class TdOutputPlugin
         public String getApiKey();
 
         @Config("endpoint")
+        @ConfigDefault("\"api.treasuredata.com\"")
         public String getEndpoint();
 
         @Config("use_ssl")
@@ -72,6 +73,14 @@ public class TdOutputPlugin
         @Config("tmpdir")
         @ConfigDefault("\"/tmp\"")
         public String getTempDir();
+
+        @Config("upload_concurrency")
+        @ConfigDefault("2")
+        public int getUploadConcurrency();
+
+        @Config("file_split_size")
+        @ConfigDefault("16384") // default 16MB (unit: kb)
+        public long getFileSplitSize();
 
         @ConfigInject
         public ScriptingContainer getJRuby();
@@ -153,7 +162,7 @@ public class TdOutputPlugin
         try (TdApiClient client = newTdApiClient(task)) {
             String sessionName = task.getSessionName();
             log.info("Deleting bulk import session '{}'", sessionName);
-            client.deleteBulkImportSession(sessionName);
+            //client.deleteBulkImportSession(sessionName);
         }
     }
 
@@ -224,11 +233,10 @@ public class TdOutputPlugin
         if (task.getSession().isPresent()) {
             return task.getSession().get();
         } else {
-            // TODO implement Exec.getTransactionUniqueName()
-            Timestamp time = exec.getTransactionTime();
-            return "embulk_" + DateTimeFormat.forPattern("yyyyMMdd_HHmmss_").withZoneUTC()
-                .print(time.getEpochSecond() * 1000)
-                + String.format("%09d", time.getNano());
+            Timestamp time = exec.getTransactionTime(); // TODO implement Exec.getTransactionUniqueName()
+            return String.format("embulk_%s_%09d",
+                    DateTimeFormat.forPattern("yyyyMMdd_HHmmss").withZoneUTC().print(time.getEpochSecond() * 1000),
+                    time.getNano());
         }
     }
 
@@ -236,6 +244,7 @@ public class TdOutputPlugin
     private boolean startBulkImportSession(TdApiClient client,
             String sessionName, String databaseName, String tableName)
     {
+        log.debug("Create bulk_import session {}", sessionName);
         TDBulkImportSession session;
         try {
             client.createBulkImportSession(sessionName, databaseName, tableName);
@@ -359,7 +368,7 @@ public class TdOutputPlugin
     private RecordWriter newTdRecordWriter(final PluginTask task, final Schema schema, final TdApiClient client)
     {
         FieldWriters fieldWriters = new FieldWriters(log, task, schema);
-        RecordWriter pageOutput = new RecordWriter(task, client, fieldWriters);
-        return pageOutput;
+        RecordWriter recordWriter = new RecordWriter(task, client, fieldWriters);
+        return recordWriter;
     }
 }
