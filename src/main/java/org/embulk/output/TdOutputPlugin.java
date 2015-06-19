@@ -17,24 +17,26 @@ import org.embulk.config.CommitReport;
 import org.embulk.config.Config;
 import org.embulk.config.ConfigDefault;
 import org.embulk.config.ConfigDiff;
+import org.embulk.config.ConfigInject;
 import org.embulk.config.ConfigSource;
 import org.embulk.config.Task;
 import org.embulk.config.TaskSource;
+import org.embulk.output.RecordWriter.FieldWriters;
 import org.embulk.spi.Exec;
 import org.embulk.spi.ExecSession;
 import org.embulk.spi.OutputPlugin;
 import org.embulk.spi.Schema;
 import org.embulk.spi.TransactionalPageOutput;
 import org.embulk.spi.time.Timestamp;
-import org.embulk.spi.time.TimestampFormatter.FormatterTask;
 import org.joda.time.format.DateTimeFormat;
+import org.jruby.embed.ScriptingContainer;
 import org.slf4j.Logger;
 
 public class TdOutputPlugin
         implements OutputPlugin
 {
     public interface PluginTask
-            extends Task, FormatterTask
+            extends Task
     {
         @Config("apikey")
         public String getApiKey();
@@ -63,9 +65,16 @@ public class TdOutputPlugin
         @ConfigDefault("null")
         public Optional<String> getSession();
 
+        @Config("time_column")
+        @ConfigDefault("null")
+        public Optional<String> getTimeColumn();
+
         @Config("tmpdir")
         @ConfigDefault("\"/tmp\"")
         public String getTempDir();
+
+        @ConfigInject
+        public ScriptingContainer getJRuby();
 
         public boolean getDoUpload();
         public void setDoUpload(boolean doUpload);
@@ -89,7 +98,7 @@ public class TdOutputPlugin
         // generate session name
         task.setSessionName(buildBulkImportSessionName(task, Exec.session()));
 
-        try (TdApiClient client = newTDApiClient(task)) {
+        try (TdApiClient client = newTdApiClient(task)) {
             String databaseName = task.getDatabase();
             String tableName = task.getTable();
             if (task.getAutoCreateTable()) {
@@ -107,8 +116,8 @@ public class TdOutputPlugin
                 }
             }
 
-            // validate MessagePackRecordOutput configuration before transaction is started
-            createMessagePackPageOutput(task, schema, newTDApiClient(task)).close();
+            // validate FieldWriters configuration before transaction is started
+            newTdRecordWriter(task, schema, newTdApiClient(task)).close();
 
             return doRun(client, task, control);
         }
@@ -119,7 +128,7 @@ public class TdOutputPlugin
             OutputPlugin.Control control)
     {
         PluginTask task = taskSource.loadTask(PluginTask.class);
-        try (TdApiClient client = newTDApiClient(task)) {
+        try (TdApiClient client = newTdApiClient(task)) {
             return doRun(client, task, control);
         }
     }
@@ -141,14 +150,14 @@ public class TdOutputPlugin
             List<CommitReport> successCommitReports)
     {
         PluginTask task = taskSource.loadTask(PluginTask.class);
-        try (TdApiClient client = newTDApiClient(task)) {
+        try (TdApiClient client = newTdApiClient(task)) {
             String sessionName = task.getSessionName();
             log.info("Deleting bulk import session '{}'", sessionName);
             client.deleteBulkImportSession(sessionName);
         }
     }
 
-    private TdApiClient newTDApiClient(final PluginTask task)
+    private TdApiClient newTdApiClient(final PluginTask task)
     {
         TdApiClientConfig config = new TdApiClientConfig(task.getEndpoint(), task.getUseSsl());
         TdApiClient client = new TdApiClient(task.getApiKey(), config);
@@ -332,13 +341,13 @@ public class TdOutputPlugin
         }
     }
 
-    public TransactionalPageOutput open(final TaskSource taskSource, final Schema schema, int processorIndex)
+    @Override
+    public TransactionalPageOutput open(TaskSource taskSource, Schema schema, int processorIndex)
     {
         final PluginTask task = taskSource.loadTask(PluginTask.class);
-        final TdApiClient client = newTDApiClient(task);
 
-        MessagePackPageOutput pageOutput = createMessagePackPageOutput(task, schema, client);
         try {
+            RecordWriter pageOutput = newTdRecordWriter(task, schema, newTdApiClient(task));
             pageOutput.open(schema);
             return pageOutput;
 
@@ -347,10 +356,10 @@ public class TdOutputPlugin
         }
     }
 
-    private MessagePackPageOutput createMessagePackPageOutput(final PluginTask task, final Schema schema, final TdApiClient client)
+    private RecordWriter newTdRecordWriter(final PluginTask task, final Schema schema, final TdApiClient client)
     {
-        MessagePackRecordOutput recordOutput = new MessagePackRecordOutput(task, schema);
-        MessagePackPageOutput pageOutput = new MessagePackPageOutput(task, client, recordOutput);
+        FieldWriters fieldWriters = new FieldWriters(log, task, schema);
+        RecordWriter pageOutput = new RecordWriter(task, client, fieldWriters);
         return pageOutput;
     }
 }
