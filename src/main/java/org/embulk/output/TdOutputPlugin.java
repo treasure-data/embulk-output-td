@@ -7,6 +7,7 @@ import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.treasuredata.api.TdApiClient;
 import com.treasuredata.api.TdApiClientConfig;
+import com.treasuredata.api.TdApiClientConfig.HttpProxyConfig;
 import com.treasuredata.api.TdApiConflictException;
 import com.treasuredata.api.TdApiException;
 import com.treasuredata.api.model.TDBulkImportSession;
@@ -49,7 +50,10 @@ public class TdOutputPlugin
         @ConfigDefault("true")
         public boolean getUseSsl();
 
-        //  TODO http_proxy
+        @Config("http_proxy")
+        @ConfigDefault("null")
+        public Optional<HttpProxyTask> getHttpProxy();
+
         //  TODO connect_timeout, read_timeout, send_timeout
 
         @Config("auto_create_table")
@@ -90,6 +94,20 @@ public class TdOutputPlugin
 
         public String getSessionName();
         public void setSessionName(String session);
+    }
+
+    public interface HttpProxyTask
+            extends Task
+    {
+        @Config("host")
+        public String getHost();
+
+        @Config("port")
+        public int getPort();
+
+        @Config("use_ssl")
+        @ConfigDefault("false")
+        public boolean getUseSsl();
     }
 
     private final Logger log;
@@ -134,8 +152,7 @@ public class TdOutputPlugin
 
     public ConfigDiff resume(TaskSource taskSource,
             Schema schema, int processorCount,
-            OutputPlugin.Control control)
-    {
+            OutputPlugin.Control control) {
         PluginTask task = taskSource.loadTask(PluginTask.class);
         try (TdApiClient client = newTdApiClient(task)) {
             return doRun(client, task, control);
@@ -168,7 +185,8 @@ public class TdOutputPlugin
 
     private TdApiClient newTdApiClient(final PluginTask task)
     {
-        TdApiClientConfig config = new TdApiClientConfig(task.getEndpoint(), task.getUseSsl());
+        Optional<HttpProxyConfig> httpProxyConfig = newHttpProxyConfig(task.getHttpProxy());
+        TdApiClientConfig config = new TdApiClientConfig(task.getEndpoint(), task.getUseSsl(), httpProxyConfig);
         TdApiClient client = new TdApiClient(task.getApiKey(), config);
         try {
             client.start();
@@ -176,6 +194,18 @@ public class TdOutputPlugin
             throw Throwables.propagate(e);
         }
         return client;
+    }
+
+    private Optional<HttpProxyConfig> newHttpProxyConfig(Optional<HttpProxyTask> task)
+    {
+        Optional<HttpProxyConfig> httpProxyConfig;
+        if (task.isPresent()) {
+            HttpProxyTask pt = task.get();
+            httpProxyConfig = Optional.of(new HttpProxyConfig(pt.getHost(), pt.getPort(), pt.getUseSsl()));
+        } else {
+            httpProxyConfig = Optional.absent();
+        }
+        return httpProxyConfig;
     }
 
     private void createDatabaseIfNotExists(TdApiClient client, String databaseName)

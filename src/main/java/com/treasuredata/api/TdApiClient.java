@@ -10,6 +10,9 @@ import com.treasuredata.api.model.TDDatabaseList;
 import com.treasuredata.api.model.TDTable;
 import com.treasuredata.api.model.TDTableList;
 import org.eclipse.jetty.client.HttpClient;
+import org.eclipse.jetty.client.HttpProxy;
+import org.eclipse.jetty.client.Origin;
+import org.eclipse.jetty.client.ProxyConfiguration;
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.eclipse.jetty.client.api.Request;
 import org.eclipse.jetty.client.util.StringContentProvider;
@@ -56,6 +59,17 @@ public class TdApiClient
         http.setIdleTimeout(60 * 1000); //  TODO get from options
         http.setMaxConnectionsPerDestination(10);  //  TODO get from options
         http.setCookieStore(new HttpCookieStore.Empty());
+
+        // ProxyConfiguration
+        if (config.getHttpProxyConfig().isPresent()) {
+            TdApiClientConfig.HttpProxyConfig httpProxyConfig = config.getHttpProxyConfig().get();
+            String host = httpProxyConfig.getHost();
+            int port = httpProxyConfig.getPort();
+            boolean isSecure = httpProxyConfig.isSecure();
+
+            ProxyConfiguration proxyConfig = http.getProxyConfiguration();
+            proxyConfig.getProxies().add(new HttpProxy(new Origin.Address(host, port), isSecure));
+        }
     }
 
     private TdApiClient(TdApiClient copy, String apiKey)
