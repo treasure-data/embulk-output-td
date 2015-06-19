@@ -17,6 +17,7 @@ TODO: Write short description here
 - **database**: database name (string, required)
 - **table**: table name (string, required)
 - **session**: bulk_import session name (string, optional)
+- **time_column**: user-defined time column (string, optional)
 - **tmpdir**: temporal directory
 
 ## Example
@@ -26,8 +27,9 @@ out:
   type: td
   apikey: <your apikey>
   endpoint: api.treasuredata.com
-  database: <db name>
-  table: <table name>
+  database: my_db
+  table: my_table
+  time_column: created_at
 ```
 
 ## Build
