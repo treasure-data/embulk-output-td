@@ -144,7 +144,7 @@ public class TdOutputPlugin
             }
 
             // validate FieldWriters configuration before transaction is started
-            newTdRecordWriter(task, schema, newTdApiClient(task)).close();
+            newRecordWriter(task, schema, newTdApiClient(task)).close();
 
             return doRun(client, task, control);
         }
@@ -386,7 +386,7 @@ public class TdOutputPlugin
         final PluginTask task = taskSource.loadTask(PluginTask.class);
 
         try {
-            RecordWriter pageOutput = newTdRecordWriter(task, schema, newTdApiClient(task));
+            RecordWriter pageOutput = newRecordWriter(task, schema, newTdApiClient(task));
             pageOutput.open(schema);
             return pageOutput;
 
@@ -395,7 +395,7 @@ public class TdOutputPlugin
         }
     }
 
-    private RecordWriter newTdRecordWriter(final PluginTask task, final Schema schema, final TdApiClient client)
+    private RecordWriter newRecordWriter(final PluginTask task, final Schema schema, final TdApiClient client)
     {
         FieldWriters fieldWriters = new FieldWriters(log, task, schema);
         RecordWriter recordWriter = new RecordWriter(task, client, fieldWriters);

@@ -24,7 +24,19 @@ TODO: Write short description here
 - **file_split_size**: split size (long, default=16384 (16MB)).
 
 ## Example
+Here is sample configuration for TD output plugin.
+```yaml
+out:
+  type: td
+  apikey: <your apikey>
+  endpoint: api.treasuredata.com
+  database: my_db
+  table: my_table
+  time_column: created_at
+```
 
+### Http Proxy Configuration
+If you want to add your Http Proxy configuration, you can use `http_proxy` parameter:
 ```yaml
 out:
   type: td
@@ -36,8 +48,16 @@ out:
   time_column: created_at
 ```
 
+
+
 ## Build
 
+### Build by Gradle
 ```
-$ ./gradlew gem
+$ git clone https://github.com/treasure-data/embulk-output-td.git
+$ cd embulk-output-td
+$ ./gradlew gem classpath
 ```
+
+### Run on Embulk
+$ bin/embulk run -I embulk-output-td/lib/ <your gussed config.yml>
