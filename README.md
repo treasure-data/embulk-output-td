@@ -60,4 +60,4 @@ $ ./gradlew gem classpath
 ```
 
 ### Run on Embulk
-$ bin/embulk run -I embulk-output-td/lib/ <your gussed config.yml>
+$ bin/embulk run -I embulk-output-td/lib/ config.yml
