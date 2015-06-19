@@ -37,9 +37,9 @@ task classpath(type: Copy, dependsOn: ["jar"]) {
 }
 clean { delete 'classpath' }
 
-task gem(type: JRubyExec, dependsOn: ["build", "gemspec", "classpath"]) {
+task gem(type: JRubyExec, dependsOn: ["gemspec", "classpath"]) {
     jrubyArgs "-rrubygems/gem_runner", "-eGem::GemRunner.new.run(ARGV)", "build"
-    script "build/gemspec"
+    script "${project.name}.gemspec"
     doLast { ant.move(file: "${project.name}-${project.version}.gem", todir: "pkg") }
 }
 
