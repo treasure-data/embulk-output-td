@@ -326,8 +326,8 @@ public class TdApiClient
 
     private ContentResponse executeExchange(Request request)
     {
-        int retryLimit = 5;
-        int retryWait = 500;
+        int retryLimit = 10;
+        int retryWait = 1000;
 
         Exception firstException = null;
 
