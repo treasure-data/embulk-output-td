@@ -9,6 +9,7 @@ import com.treasuredata.api.model.TDDatabase;
 import com.treasuredata.api.model.TDDatabaseList;
 import com.treasuredata.api.model.TDTable;
 import com.treasuredata.api.model.TDTableList;
+import com.treasuredata.api.model.TDTableType;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.HttpProxy;
 import org.eclipse.jetty.client.Origin;
@@ -134,8 +135,12 @@ public class TdApiClient
 
     public TDTable createTable(String databaseName, String tableName)
     {
+        return createTable(databaseName, tableName, TDTableType.LOG);
+    }
+
+    public TDTable createTable(String databaseName, String tableName, TDTableType tableType) {
         Request request = prepareExchange(HttpMethod.POST,
-                buildUrl("/v3/table/create", databaseName, tableName));
+                buildUrl("/v3/table/create", databaseName, tableName, tableType.name().toLowerCase()));
         ContentResponse response = executeExchange(request);
         TDTable table = parseResponse(response.getContent(), TDTable.class);
         return table;
