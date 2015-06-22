@@ -374,10 +374,10 @@ public class TdOutputPlugin
         RecordWriter closeLater = null;
         try {
             FieldWriterSet fieldWriters = new FieldWriterSet(log, task, schema);
-            RecordWriter pageOutput = closeLater = new RecordWriter(task, newTdApiClient(task), fieldWriters);
-            pageOutput.open(schema);
+            RecordWriter recordWriter = closeLater = new RecordWriter(task, newTdApiClient(task), fieldWriters);
+            recordWriter.open(schema);
             closeLater = null;
-            return pageOutput;
+            return recordWriter;
 
         } catch (IOException e) {
             throw Throwables.propagate(e);

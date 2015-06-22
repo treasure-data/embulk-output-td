@@ -21,6 +21,7 @@ import org.embulk.spi.type.StringType;
 import org.embulk.spi.type.TimestampType;
 import org.embulk.spi.type.Type;
 import org.joda.time.DateTimeZone;
+import org.jruby.embed.ScriptingContainer;
 import org.msgpack.MessagePack;
 import org.slf4j.Logger;
 
@@ -233,16 +234,11 @@ public class RecordWriter
             DUPLICATE_PRIMARY_KEY;
         }
 
-        // to format timestamp values to string by "%Y-%m-%d %H:%M:%S.%3N"
-        private static TimestampFormatter defaultTimestampFormatter;
-
         private final int fieldCount;
         private final FieldWriter[] fieldWriters;
 
         public FieldWriterSet(Logger log, PluginTask task, Schema schema)
         {
-            defaultTimestampFormatter = new TimestampFormatter(task.getJRuby(), "%Y-%m-%d %H:%M:%S.%3N", DateTimeZone.UTC);
-
             Optional<String> userDefinedPrimaryKeySourceColumnName = task.getTimeColumn();
             boolean hasPkWriter = false;
             int duplicatePrimaryKeySourceIndex = -1;
@@ -292,7 +288,7 @@ public class RecordWriter
                             writer = new LongFieldWriter(columnName);
                             hasPkWriter = true;
                         } else if (columnType instanceof TimestampType) {
-                            writer = new TimestampStringFieldWriter(columnName);
+                            writer = new TimestampStringFieldWriter(task.getJRuby(), columnName);
                             hasPkWriter = true;
                         } else {
                             throw new ConfigException(String.format("Type of '%s' column must be long or timestamp but got %s",
@@ -310,7 +306,7 @@ public class RecordWriter
                         } else if (columnType instanceof StringType) {
                             writer = new StringFieldWriter(columnName);
                         } else if (columnType instanceof TimestampType) {
-                            writer = new TimestampStringFieldWriter(columnName);
+                            writer = new TimestampStringFieldWriter(task.getJRuby(), columnName);
                             if (firstTimestampColumnIndex < 0) {
                                 firstTimestampColumnIndex = i;
                             }
@@ -355,7 +351,7 @@ public class RecordWriter
                 if (columnType instanceof LongType) {
                     writer = new LongFieldDuplicator(columnName, "time");
                 } else if (columnType instanceof TimestampType) {
-                    writer = new TimestampFieldLongDuplicator(columnName, "time");
+                    writer = new TimestampFieldLongDuplicator(task.getJRuby(), columnName, "time");
                 } else {
                     throw new ConfigException(String.format("Type of '%s' column must be long or timestamp but got %s",
                             columnName, columnType));
@@ -496,16 +492,20 @@ public class RecordWriter
     static class TimestampStringFieldWriter
             extends FieldWriter
     {
-        public TimestampStringFieldWriter(String keyName)
+        // to format timestamp values to string by "%Y-%m-%d %H:%M:%S.%3N"
+        private final TimestampFormatter defaultFormatter;
+
+        public TimestampStringFieldWriter(ScriptingContainer jruby, String keyName)
         {
             super(keyName);
+            this.defaultFormatter = new TimestampFormatter(jruby, "%Y-%m-%d %H:%M:%S.%3N", DateTimeZone.UTC);
         }
 
         @Override
         public void writeValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
                 throws IOException
         {
-            builder.writeString(FieldWriterSet.defaultTimestampFormatter.format(reader.getTimestamp(column)));
+            builder.writeString(defaultFormatter.format(reader.getTimestamp(column)));
         }
     }
 
@@ -550,9 +550,9 @@ public class RecordWriter
     {
         private final TimestampLongFieldWriter timeFieldWriter;
 
-        public TimestampFieldLongDuplicator(String keyName, String longDuplicateKeyName)
+        public TimestampFieldLongDuplicator(ScriptingContainer jruby, String keyName, String longDuplicateKeyName)
         {
-            super(keyName);
+            super(jruby, keyName);
             timeFieldWriter = new TimestampLongFieldWriter(longDuplicateKeyName);
         }
 
