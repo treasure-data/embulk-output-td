@@ -2,6 +2,8 @@ package org.embulk.output;
 
 import java.io.IOException;
 import java.util.List;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.Max;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
@@ -82,6 +84,8 @@ public class TdOutputPlugin
 
         @Config("upload_concurrency")
         @ConfigDefault("2")
+        @Min(1)
+        @Max(8)
         public int getUploadConcurrency();
 
         @Config("file_split_size")
@@ -367,14 +371,20 @@ public class TdOutputPlugin
     {
         final PluginTask task = taskSource.loadTask(PluginTask.class);
 
+        RecordWriter closeLater = null;
         try {
             FieldWriterSet fieldWriters = new FieldWriterSet(log, task, schema);
-            RecordWriter pageOutput = new RecordWriter(task, newTdApiClient(task), fieldWriters);
+            RecordWriter pageOutput = closeLater = new RecordWriter(task, newTdApiClient(task), fieldWriters);
             pageOutput.open(schema);
+            closeLater = null;
             return pageOutput;
 
         } catch (IOException e) {
             throw Throwables.propagate(e);
+        } finally {
+            if (closeLater != null) {
+                closeLater.close();
+            }
         }
     }
 }

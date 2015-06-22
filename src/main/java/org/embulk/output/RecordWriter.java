@@ -60,18 +60,13 @@ public class RecordWriter
         this.fieldWriters = fieldWriters;
         this.tempDir = new File(task.getTempDir());
         this.executor = new FinalizableExecutorService();
-        this.uploadConcurrency = checkUploadConcurrency(task.getUploadConcurrency(), 1, 8);
+        this.uploadConcurrency = task.getUploadConcurrency();
         this.fileSplitSize = task.getFileSplitSize() * 1024;
     }
 
     public static void validateSchema(Logger log, PluginTask task, Schema schema)
     {
         new FieldWriterSet(log, task, schema);
-    }
-
-    private static int checkUploadConcurrency(int v, int lower, int upper)
-    {
-        return v < lower ? lower : (upper < v ? upper : v);
     }
 
     void open(final Schema schema)
