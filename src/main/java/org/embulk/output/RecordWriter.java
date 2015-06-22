@@ -39,7 +39,7 @@ public class RecordWriter
     private final String sessionName;
 
     private final MessagePack msgpack;
-    private final FieldWriters fieldWriters;
+    private final FieldWriterSet fieldWriters;
     private final File tempDir;
 
     private int seqid = 0;
@@ -50,7 +50,7 @@ public class RecordWriter
     private final int uploadConcurrency;
     private final long fileSplitSize; // unit: kb
 
-    RecordWriter(PluginTask task, TdApiClient client, FieldWriters fieldWriters)
+    public RecordWriter(PluginTask task, TdApiClient client, FieldWriterSet fieldWriters)
     {
         this.log = Exec.getLogger(getClass());
         this.client = checkNotNull(client);
@@ -60,13 +60,13 @@ public class RecordWriter
         this.fieldWriters = fieldWriters;
         this.tempDir = new File(task.getTempDir());
         this.executor = new FinalizableExecutorService();
-        this.uploadConcurrency = checkUploadConcurrency(task.getUploadConcurrency(), 1, 8);
+        this.uploadConcurrency = task.getUploadConcurrency();
         this.fileSplitSize = task.getFileSplitSize() * 1024;
     }
 
-    private static int checkUploadConcurrency(int v, int lower, int upper)
+    public static void validateSchema(Logger log, PluginTask task, Schema schema)
     {
-        return v < lower ? lower : (upper < v ? upper : v);
+        new FieldWriterSet(log, task, schema);
     }
 
     void open(final Schema schema)
@@ -128,7 +128,7 @@ public class RecordWriter
                     {
                         FieldWriter fieldWriter = fieldWriters.getFieldWriter(column.getIndex());
                         try {
-                            fieldWriter.write(builder, pageReader, column);
+                            fieldWriter.writeKeyValue(builder, pageReader, column);
                         } catch (IOException e) {
                             throw Throwables.propagate(e);
                         }
@@ -137,7 +137,7 @@ public class RecordWriter
 
                 builder.writeMapEnd();
 
-                if (builder.getRecordCount() % 5000 == 0 && builder.getFileSize() > fileSplitSize) {
+                if (builder.getWrittenSize() > fileSplitSize) {
                     flush();
                 }
             }
@@ -145,7 +145,6 @@ public class RecordWriter
         } catch (IOException e) {
             throw Throwables.propagate(e);
         }
-
     }
 
     public void flush() throws IOException
@@ -155,7 +154,7 @@ public class RecordWriter
         if (builder.getRecordCount() > 0) {
             log.info("{uploading: {rows: {}, size: {} bytes (compressed)}}",
                     builder.getRecordCount(),
-                    NumberFormat.getNumberInstance().format(builder.getFileSize()));
+                    NumberFormat.getNumberInstance().format(builder.getWrittenSize()));
             upload(builder);
             builder = null;
         }
@@ -225,7 +224,7 @@ public class RecordWriter
         return report;
     }
 
-    static class FieldWriters
+    static class FieldWriterSet
     {
         private enum ColumnWriterMode
         {
@@ -240,7 +239,7 @@ public class RecordWriter
         private final int fieldCount;
         private final FieldWriter[] fieldWriters;
 
-        public FieldWriters(Logger log, PluginTask task, Schema schema)
+        public FieldWriterSet(Logger log, PluginTask task, Schema schema)
         {
             defaultTimestampFormatter = new TimestampFormatter(task.getJRuby(), "%Y-%m-%d %H:%M:%S.%3N", DateTimeZone.UTC);
 
@@ -354,9 +353,9 @@ public class RecordWriter
 
                 FieldWriter writer;
                 if (columnType instanceof LongType) {
-                    writer = new LongFieldDuplicator(columnName);
+                    writer = new LongFieldDuplicator(columnName, "time");
                 } else if (columnType instanceof TimestampType) {
-                    writer = new TimestampFieldDuplicator(columnName);
+                    writer = new TimestampFieldLongDuplicator(columnName, "time");
                 } else {
                     throw new ConfigException(String.format("Type of '%s' column must be long or timestamp but got %s",
                             columnName, columnType));
@@ -402,14 +401,14 @@ public class RecordWriter
 
     static abstract class FieldWriter
     {
-        protected String keyName;
+        private final String keyName;
 
         protected FieldWriter(String keyName)
         {
             this.keyName = keyName;
         }
 
-        public void write(MsgpackGZFileBuilder builder, PageReader reader, Column column)
+        public void writeKeyValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
                 throws IOException
         {
             writeKey(builder);
@@ -506,7 +505,7 @@ public class RecordWriter
         public void writeValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
                 throws IOException
         {
-            builder.writeString(FieldWriters.defaultTimestampFormatter.format(reader.getTimestamp(column)));
+            builder.writeString(FieldWriterSet.defaultTimestampFormatter.format(reader.getTimestamp(column)));
         }
     }
 
@@ -529,12 +528,12 @@ public class RecordWriter
     static class LongFieldDuplicator
             extends LongFieldWriter
     {
-        private FieldWriter timeFieldWriter;
+        private final LongFieldWriter timeFieldWriter;
 
-        public LongFieldDuplicator(String keyName)
+        public LongFieldDuplicator(String keyName, String duplicateKeyName)
         {
             super(keyName);
-            timeFieldWriter = new LongFieldWriter("time");
+            timeFieldWriter = new LongFieldWriter(duplicateKeyName);
         }
 
         @Override
@@ -542,19 +541,19 @@ public class RecordWriter
                 throws IOException
         {
             super.writeValue(builder, reader, column);
-            timeFieldWriter.write(builder, reader, column);
+            timeFieldWriter.writeKeyValue(builder, reader, column);
         }
     }
 
-    static class TimestampFieldDuplicator
+    static class TimestampFieldLongDuplicator
             extends TimestampStringFieldWriter
     {
-        private FieldWriter timeFieldWriter;
+        private final TimestampLongFieldWriter timeFieldWriter;
 
-        public TimestampFieldDuplicator(String keyName)
+        public TimestampFieldLongDuplicator(String keyName, String longDuplicateKeyName)
         {
             super(keyName);
-            timeFieldWriter = new TimestampLongFieldWriter("time");
+            timeFieldWriter = new TimestampLongFieldWriter(longDuplicateKeyName);
         }
 
         @Override
@@ -562,8 +561,7 @@ public class RecordWriter
                 throws IOException
         {
             super.writeValue(builder, reader, column);
-            timeFieldWriter.write(builder, reader, column);
+            timeFieldWriter.writeKeyValue(builder, reader, column);
         }
     }
-
 }

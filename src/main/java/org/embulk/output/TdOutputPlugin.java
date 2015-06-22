@@ -2,6 +2,8 @@ package org.embulk.output;
 
 import java.io.IOException;
 import java.util.List;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.Max;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
@@ -9,6 +11,7 @@ import com.treasuredata.api.TdApiClient;
 import com.treasuredata.api.TdApiClientConfig;
 import com.treasuredata.api.TdApiClientConfig.HttpProxyConfig;
 import com.treasuredata.api.TdApiConflictException;
+import com.treasuredata.api.TdApiNotFoundException;
 import com.treasuredata.api.TdApiException;
 import com.treasuredata.api.model.TDBulkImportSession;
 import com.treasuredata.api.model.TDBulkImportSession.ImportStatus;
@@ -20,9 +23,10 @@ import org.embulk.config.ConfigDefault;
 import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigInject;
 import org.embulk.config.ConfigSource;
+import org.embulk.config.ConfigException;
 import org.embulk.config.Task;
 import org.embulk.config.TaskSource;
-import org.embulk.output.RecordWriter.FieldWriters;
+import org.embulk.output.RecordWriter.FieldWriterSet;
 import org.embulk.spi.Exec;
 import org.embulk.spi.ExecSession;
 import org.embulk.spi.OutputPlugin;
@@ -80,6 +84,8 @@ public class TdOutputPlugin
 
         @Config("upload_concurrency")
         @ConfigDefault("2")
+        @Min(1)
+        @Max(8)
         public int getUploadConcurrency();
 
         @Config("file_split_size")
@@ -129,22 +135,14 @@ public class TdOutputPlugin
             String databaseName = task.getDatabase();
             String tableName = task.getTable();
             if (task.getAutoCreateTable()) {
-                createDatabaseIfNotExists(client, databaseName);
                 createTableIfNotExists(client, databaseName, tableName);
             } else {
                 // check if the database and/or table exist or not
-                if (!checkDatabaseExists(client, databaseName)) {
-                    log.debug("Database '{}' doesn't exist", databaseName);
-                    throw new TdApiException(String.format("Database '%s' doesn't exist", databaseName));
-                }
-                if (!checkTableExists(client, databaseName, tableName)) {
-                    log.debug("Table {}.{} doesn't exist", databaseName, tableName);
-                    throw new TdApiException(String.format("Table %s.%s doesn't exist", databaseName, tableName));
-                }
+                validateTableExists(client, databaseName, tableName);
             }
 
-            // validate FieldWriters configuration before transaction is started
-            newRecordWriter(task, schema, newTdApiClient(task)).close();
+            // validate FieldWriterSet configuration before transaction is started
+            RecordWriter.validateSchema(log, task, schema);
 
             return doRun(client, task, control);
         }
@@ -208,54 +206,42 @@ public class TdOutputPlugin
         return httpProxyConfig;
     }
 
-    private void createDatabaseIfNotExists(TdApiClient client, String databaseName)
-    {
-        if (checkDatabaseExists(client, databaseName)) {
-            log.debug("Database '{}' exists", databaseName);
-            return;
-        }
-
-        log.info("Creating database '{}'", databaseName);
-        try {
-            client.createDatabase(databaseName);
-        } catch (TdApiConflictException e) {
-            // ignorable error
-        }
-    }
-
     private void createTableIfNotExists(TdApiClient client, String databaseName, String tableName)
     {
-        if (checkTableExists(client, databaseName, tableName)) {
-            log.debug("Table {}.{} exists", databaseName, tableName);
-            return;
-        }
-
-        log.info("Create table {}.{} because it doesn't exist", databaseName, tableName);
+        log.debug("Creating table \"{}\".\"{}\" if not exists", databaseName, tableName);
         try {
             client.createTable(databaseName, tableName);
+            log.debug("Created table \"{}\".\"{}\"", databaseName, tableName);
+        } catch (TdApiNotFoundException e) {
+            try {
+                client.createDatabase(databaseName);
+                log.debug("Created database \"{}\"", databaseName);
+            } catch (TdApiConflictException ex) {
+                // ignorable error
+            }
+            try {
+                client.createTable(databaseName, tableName);
+                log.debug("Created table \"{}\".\"{}\"", databaseName, tableName);
+            } catch (TdApiConflictException exe) {
+                // ignorable error
+            }
         } catch (TdApiConflictException e) {
             // ignorable error
         }
     }
 
-    private boolean checkDatabaseExists(TdApiClient client, String name)
+    private void validateTableExists(TdApiClient client, String databaseName, String tableName)
     {
-        for (TDDatabase db : client.getDatabases()) {
-            if (db.getName().equals(name)) {
-                return true;
+        try {
+            for (TDTable table : client.getTables(databaseName)) {
+                if (table.getName().equals(tableName)) {
+                    return;
+                }
             }
+            throw new ConfigException(String.format("Table \"%s\".\"%s\" doesn't exist", databaseName, tableName));
+        } catch (TdApiNotFoundException ex) {
+            throw new ConfigException(String.format("Database \"%s\" doesn't exist", databaseName), ex);
         }
-        return false;
-    }
-
-    private boolean checkTableExists(TdApiClient client, String databaseName, String tableName)
-    {
-        for (TDTable table : client.getTables(databaseName)) {
-            if (table.getName().equals(tableName)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private String buildBulkImportSessionName(PluginTask task, ExecSession exec)
@@ -385,20 +371,20 @@ public class TdOutputPlugin
     {
         final PluginTask task = taskSource.loadTask(PluginTask.class);
 
+        RecordWriter closeLater = null;
         try {
-            RecordWriter pageOutput = newRecordWriter(task, schema, newTdApiClient(task));
+            FieldWriterSet fieldWriters = new FieldWriterSet(log, task, schema);
+            RecordWriter pageOutput = closeLater = new RecordWriter(task, newTdApiClient(task), fieldWriters);
             pageOutput.open(schema);
+            closeLater = null;
             return pageOutput;
 
         } catch (IOException e) {
             throw Throwables.propagate(e);
+        } finally {
+            if (closeLater != null) {
+                closeLater.close();
+            }
         }
-    }
-
-    private RecordWriter newRecordWriter(final PluginTask task, final Schema schema, final TdApiClient client)
-    {
-        FieldWriters fieldWriters = new FieldWriters(log, task, schema);
-        RecordWriter recordWriter = new RecordWriter(task, client, fieldWriters);
-        return recordWriter;
     }
 }

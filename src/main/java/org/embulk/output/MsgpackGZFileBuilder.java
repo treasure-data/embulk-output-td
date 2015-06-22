@@ -25,17 +25,27 @@ public class MsgpackGZFileBuilder
         }
 
         @Override
-        public void write(byte[] b, int off, int len) throws IOException {
+        public void write(int b) throws IOException
+        {
+            size += 1;
+            super.write(b);
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException
+        {
             size += len;
             super.write(b, off, len);
         }
 
         @Override
-        public void close() throws IOException {
+        public void close() throws IOException
+        {
             super.close();
         }
 
-        public long size() {
+        public long size()
+        {
             return size;
         }
     }
@@ -63,7 +73,7 @@ public class MsgpackGZFileBuilder
         return recordCount;
     }
 
-    public long getFileSize()
+    public long getWrittenSize()
     {
         return out.size();
     }
