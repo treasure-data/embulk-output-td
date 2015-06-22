@@ -137,7 +137,7 @@ public class RecordWriter
 
                 builder.writeMapEnd();
 
-                if (builder.getRecordCount() % 5000 == 0 && builder.getFileSize() > fileSplitSize) {
+                if (builder.getWrittenSize() > fileSplitSize) {
                     flush();
                 }
             }
@@ -155,7 +155,7 @@ public class RecordWriter
         if (builder.getRecordCount() > 0) {
             log.info("{uploading: {rows: {}, size: {} bytes (compressed)}}",
                     builder.getRecordCount(),
-                    NumberFormat.getNumberInstance().format(builder.getFileSize()));
+                    NumberFormat.getNumberInstance().format(builder.getWrittenSize()));
             upload(builder);
             builder = null;
         }
