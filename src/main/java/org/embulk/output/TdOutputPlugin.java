@@ -24,7 +24,7 @@ import org.embulk.config.ConfigSource;
 import org.embulk.config.ConfigException;
 import org.embulk.config.Task;
 import org.embulk.config.TaskSource;
-import org.embulk.output.RecordWriter.FieldWriters;
+import org.embulk.output.RecordWriter.FieldWriterSet;
 import org.embulk.spi.Exec;
 import org.embulk.spi.ExecSession;
 import org.embulk.spi.OutputPlugin;
@@ -137,8 +137,8 @@ public class TdOutputPlugin
                 validateTableExists(client, databaseName, tableName);
             }
 
-            // validate FieldWriters configuration before transaction is started
-            newRecordWriter(task, schema, newTdApiClient(task)).close();
+            // validate FieldWriterSet configuration before transaction is started
+            RecordWriter.validateSchema(log, task, schema);
 
             return doRun(client, task, control);
         }
@@ -368,19 +368,13 @@ public class TdOutputPlugin
         final PluginTask task = taskSource.loadTask(PluginTask.class);
 
         try {
-            RecordWriter pageOutput = newRecordWriter(task, schema, newTdApiClient(task));
+            FieldWriterSet fieldWriters = new FieldWriterSet(log, task, schema);
+            RecordWriter pageOutput = new RecordWriter(task, newTdApiClient(task), fieldWriters);
             pageOutput.open(schema);
             return pageOutput;
 
         } catch (IOException e) {
             throw Throwables.propagate(e);
         }
-    }
-
-    private RecordWriter newRecordWriter(final PluginTask task, final Schema schema, final TdApiClient client)
-    {
-        FieldWriters fieldWriters = new FieldWriters(log, task, schema);
-        RecordWriter recordWriter = new RecordWriter(task, client, fieldWriters);
-        return recordWriter;
     }
 }

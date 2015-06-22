@@ -39,7 +39,7 @@ public class RecordWriter
     private final String sessionName;
 
     private final MessagePack msgpack;
-    private final FieldWriters fieldWriters;
+    private final FieldWriterSet fieldWriters;
     private final File tempDir;
 
     private int seqid = 0;
@@ -50,7 +50,7 @@ public class RecordWriter
     private final int uploadConcurrency;
     private final long fileSplitSize; // unit: kb
 
-    RecordWriter(PluginTask task, TdApiClient client, FieldWriters fieldWriters)
+    public RecordWriter(PluginTask task, TdApiClient client, FieldWriterSet fieldWriters)
     {
         this.log = Exec.getLogger(getClass());
         this.client = checkNotNull(client);
@@ -62,6 +62,11 @@ public class RecordWriter
         this.executor = new FinalizableExecutorService();
         this.uploadConcurrency = checkUploadConcurrency(task.getUploadConcurrency(), 1, 8);
         this.fileSplitSize = task.getFileSplitSize() * 1024;
+    }
+
+    public static void validateSchema(Logger log, PluginTask task, Schema schema)
+    {
+        new FieldWriterSet(log, task, schema);
     }
 
     private static int checkUploadConcurrency(int v, int lower, int upper)
@@ -145,7 +150,6 @@ public class RecordWriter
         } catch (IOException e) {
             throw Throwables.propagate(e);
         }
-
     }
 
     public void flush() throws IOException
@@ -225,7 +229,7 @@ public class RecordWriter
         return report;
     }
 
-    static class FieldWriters
+    static class FieldWriterSet
     {
         private enum ColumnWriterMode
         {
@@ -240,7 +244,7 @@ public class RecordWriter
         private final int fieldCount;
         private final FieldWriter[] fieldWriters;
 
-        public FieldWriters(Logger log, PluginTask task, Schema schema)
+        public FieldWriterSet(Logger log, PluginTask task, Schema schema)
         {
             defaultTimestampFormatter = new TimestampFormatter(task.getJRuby(), "%Y-%m-%d %H:%M:%S.%3N", DateTimeZone.UTC);
 
@@ -506,7 +510,7 @@ public class RecordWriter
         public void writeValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
                 throws IOException
         {
-            builder.writeString(FieldWriters.defaultTimestampFormatter.format(reader.getTimestamp(column)));
+            builder.writeString(FieldWriterSet.defaultTimestampFormatter.format(reader.getTimestamp(column)));
         }
     }
 
@@ -565,5 +569,4 @@ public class RecordWriter
             timeFieldWriter.write(builder, reader, column);
         }
     }
-
 }
