@@ -31,6 +31,7 @@ import java.text.NumberFormat;
 import java.util.concurrent.Callable;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import org.embulk.output.TdOutputPlugin.UnixTimestampUnit;
 
 public class RecordWriter
         implements TransactionalPageOutput
@@ -285,7 +286,10 @@ public class RecordWriter
                     case PRIMARY_KEY:
                         log.info("Using {}:{} column as the data partitioning key", columnName, columnType);
                         if (columnType instanceof LongType) {
-                            writer = new LongFieldWriter(columnName);
+                            if (task.getUnixTimestampUnit() != UnixTimestampUnit.SEC) {
+                                log.warn("time column is converted from {} to seconds", task.getUnixTimestampUnit());
+                            }
+                            writer = new UnixTimestampLongFieldWriter(columnName, task.getUnixTimestampUnit().getFractionUnit());
                             hasPkWriter = true;
                         } else if (columnType instanceof TimestampType) {
                             writer = new TimestampStringFieldWriter(task.getJRuby(), columnName);
@@ -344,13 +348,14 @@ public class RecordWriter
                 String columnName = schema.getColumnName(duplicatePrimaryKeySourceIndex);
                 Type columnType = schema.getColumnType(duplicatePrimaryKeySourceIndex);
 
-                log.info("Duplicating {}:{} column to 'time' column for the data partitioning",
-                        columnName, columnType);
-
                 FieldWriter writer;
                 if (columnType instanceof LongType) {
-                    writer = new LongFieldDuplicator(columnName, "time");
+                    log.info("Duplicating {}:{} column (unix timestamp {}) to 'time' column as seconds for the data partitioning",
+                            columnName, columnType, task.getUnixTimestampUnit());
+                    writer = new UnixTimestampFieldDuplicator(columnName, "time", task.getUnixTimestampUnit().getFractionUnit());
                 } else if (columnType instanceof TimestampType) {
+                    log.info("Duplicating {}:{} column to 'time' column as seconds for the data partitioning",
+                            columnName, columnType);
                     writer = new TimestampFieldLongDuplicator(task.getJRuby(), columnName, "time");
                 } else {
                     throw new ConfigException(String.format("Type of '%s' column must be long or timestamp but got %s",
@@ -473,6 +478,25 @@ public class RecordWriter
         }
     }
 
+    static class UnixTimestampLongFieldWriter
+            extends FieldWriter
+    {
+        private final int fractionUnit;
+
+        UnixTimestampLongFieldWriter(String keyName, int fractionUnit)
+        {
+            super(keyName);
+            this.fractionUnit = fractionUnit;
+        }
+
+        @Override
+        public void writeValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
+                throws IOException
+        {
+            builder.writeLong(reader.getLong(column) / fractionUnit);
+        }
+    }
+
     static class StringFieldWriter
             extends FieldWriter
     {
@@ -525,15 +549,15 @@ public class RecordWriter
         }
     }
 
-    static class LongFieldDuplicator
+    static class UnixTimestampFieldDuplicator
             extends LongFieldWriter
     {
-        private final LongFieldWriter timeFieldWriter;
+        private final UnixTimestampLongFieldWriter timeFieldWriter;
 
-        public LongFieldDuplicator(String keyName, String duplicateKeyName)
+        public UnixTimestampFieldDuplicator(String keyName, String duplicateKeyName, int fractionUnit)
         {
             super(keyName);
-            timeFieldWriter = new LongFieldWriter(duplicateKeyName);
+            timeFieldWriter = new UnixTimestampLongFieldWriter(duplicateKeyName, fractionUnit);
         }
 
         @Override

@@ -7,6 +7,8 @@ import javax.validation.constraints.Max;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.treasuredata.api.TdApiClient;
 import com.treasuredata.api.TdApiClientConfig;
 import com.treasuredata.api.TdApiClientConfig.HttpProxyConfig;
@@ -78,6 +80,10 @@ public class TdOutputPlugin
         @ConfigDefault("null")
         public Optional<String> getTimeColumn();
 
+        @Config("unix_timestamp_unit")
+        @ConfigDefault("\"sec\"")
+        public UnixTimestampUnit getUnixTimestampUnit();
+
         @Config("tmpdir")
         @ConfigDefault("\"/tmp\"")
         public String getTempDir();
@@ -114,6 +120,47 @@ public class TdOutputPlugin
         @Config("use_ssl")
         @ConfigDefault("false")
         public boolean getUseSsl();
+    }
+
+    public static enum UnixTimestampUnit
+    {
+        SEC(1),
+        MILLI(1000),
+        MICRO(1000000),
+        NANO(1000000000);
+
+        private final int unit;
+
+        private UnixTimestampUnit(int unit)
+        {
+            this.unit = unit;
+        }
+
+        public int getFractionUnit()
+        {
+            return unit;
+        }
+
+        @JsonCreator
+        public static UnixTimestampUnit of(String s)
+        {
+            switch (s) {
+            case "sec": return SEC;
+            case "milli": return MILLI;
+            case "micro": return MICRO;
+            case "nano": return NANO;
+            default:
+                throw new ConfigException(
+                        String.format("Unknown unix_timestamp_unit '%s'. Supported units are sec, milli, micro, and nano"));
+            }
+        }
+
+        @JsonValue
+        @Override
+        public String toString()
+        {
+            return name().toLowerCase();
+        }
     }
 
     private final Logger log;
