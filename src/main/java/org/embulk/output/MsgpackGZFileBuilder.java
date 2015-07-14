@@ -1,5 +1,6 @@
 package org.embulk.output;
 
+import org.embulk.spi.Exec;
 import org.msgpack.MessagePack;
 import org.msgpack.packer.Packer;
 
@@ -81,6 +82,11 @@ public class MsgpackGZFileBuilder
     public File getFile()
     {
         return file;
+    }
+
+    public boolean delete()
+    {
+        return file.delete();
     }
 
     public void finish()
