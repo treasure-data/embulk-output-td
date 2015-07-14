@@ -192,6 +192,7 @@ public class RecordWriter
             {
                 builder.close();
                 if (!builder.delete()) {
+                    log.warn("Failed to delete local temporary file {}. Ignoring.", builder.getFile());
                 }
             }
         });
