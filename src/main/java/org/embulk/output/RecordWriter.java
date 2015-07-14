@@ -27,6 +27,7 @@ import org.msgpack.MessagePack;
 import org.slf4j.Logger;
 
 import java.io.File;
+import java.io.Closeable;
 import java.io.IOException;
 import java.text.NumberFormat;
 import java.util.concurrent.Callable;
@@ -154,9 +155,9 @@ public class RecordWriter
 
     public void flush() throws IOException
     {
-        builder.finish();
-
         if (builder.getRecordCount() > 0) {
+            builder.finish();
+
             log.info("{uploading: {rows: {}, size: {} bytes (compressed)}}",
                     builder.getRecordCount(),
                     NumberFormat.getNumberInstance().format(builder.getWrittenSize()));
@@ -171,27 +172,30 @@ public class RecordWriter
         executor.joinPartial(uploadConcurrency - 1);
         executor.submit(new Callable<Void>() {
             @Override
-            public Void call() throws Exception {
+            public Void call() throws Exception
+            {
                 File file = builder.getFile();
 
-                try {
-                    log.debug("{uploading: {file: {}}}", file.getAbsolutePath());
-                    Stopwatch stopwatch = Stopwatch.createStarted();
+                log.debug("{uploading: {file: {}}}", file.getAbsolutePath());
+                Stopwatch stopwatch = Stopwatch.createStarted();
 
-                    client.uploadBulkImport(sessionName, file);
+                client.uploadBulkImport(sessionName, file);
 
-                    stopwatch.stop();
-                    stopwatch.elapsed(TimeUnit.MILLISECONDS);
-                    log.debug("{uploaded: {file: {}, time: {}}}", file.getAbsolutePath(), stopwatch);
-
-                } finally {
-                    log.debug("Remove file: {}", file.getAbsolutePath());
-                    builder.removeFile();
-                }
-
+                stopwatch.stop();
+                stopwatch.elapsed(TimeUnit.MILLISECONDS);
+                log.debug("{uploaded: {file: {}, time: {}}}", file.getAbsolutePath(), stopwatch);
                 return null;
             }
-        }, builder);
+        },
+        new Closeable() {
+            public void close() throws IOException
+            {
+                builder.close();
+                if (!builder.delete()) {
+                    log.warn("Failed to delete local temporary file {}. Ignoring.", builder.getFile());
+                }
+            }
+        });
         seqid++;
     }
 
@@ -217,6 +221,7 @@ public class RecordWriter
             } finally {
                 if (builder != null) {
                     builder.close();
+                    builder.delete();
                     builder = null;
                 }
 
