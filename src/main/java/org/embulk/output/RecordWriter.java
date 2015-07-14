@@ -1,6 +1,7 @@
 package org.embulk.output;
 
 import com.google.common.base.Optional;
+import com.google.common.base.Stopwatch;
 import com.google.common.base.Throwables;
 import com.treasuredata.api.TdApiClient;
 import org.embulk.config.CommitReport;
@@ -29,6 +30,7 @@ import java.io.File;
 import java.io.IOException;
 import java.text.NumberFormat;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import org.embulk.output.TdOutputPlugin.UnixTimestampUnit;
@@ -141,6 +143,7 @@ public class RecordWriter
 
                 if (builder.getWrittenSize() > fileSplitSize) {
                     flush();
+                    prepareNextBuilder();
                 }
             }
 
@@ -160,8 +163,6 @@ public class RecordWriter
             upload(builder);
             builder = null;
         }
-
-        prepareNextBuilder();
     }
 
     private void upload(final MsgpackGZFileBuilder builder)
@@ -171,7 +172,23 @@ public class RecordWriter
         executor.submit(new Callable<Void>() {
             @Override
             public Void call() throws Exception {
-                client.uploadBulkImport(sessionName, builder.getFile());
+                File file = builder.getFile();
+
+                try {
+                    log.debug("{uploading: {file: {}}}", file.getAbsolutePath());
+                    Stopwatch stopwatch = Stopwatch.createStarted();
+
+                    client.uploadBulkImport(sessionName, file);
+
+                    stopwatch.stop();
+                    stopwatch.elapsed(TimeUnit.MILLISECONDS);
+                    log.debug("{uploaded: {file: {}, time: {}}}", file.getAbsolutePath(), stopwatch);
+
+                } finally {
+                    log.debug("Remove file: {}", file.getAbsolutePath());
+                    builder.removeFile();
+                }
+
                 return null;
             }
         }, builder);

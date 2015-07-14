@@ -1,7 +1,9 @@
 package org.embulk.output;
 
+import org.embulk.spi.Exec;
 import org.msgpack.MessagePack;
 import org.msgpack.packer.Packer;
+import org.slf4j.Logger;
 
 import java.io.BufferedOutputStream;
 import java.io.Closeable;
@@ -50,6 +52,7 @@ public class MsgpackGZFileBuilder
         }
     }
 
+    private final Logger log;
     private final File file;
     private final DataSizeFilter out;
     private final GZIPOutputStream gzout;
@@ -60,6 +63,7 @@ public class MsgpackGZFileBuilder
     public MsgpackGZFileBuilder(MessagePack msgpack, File file)
             throws IOException
     {
+        this.log = Exec.getLogger(getClass());
         this.file = checkNotNull(file);
         this.out = new DataSizeFilter(new BufferedOutputStream(new FileOutputStream(file)));
         this.gzout = new GZIPOutputStream(this.out);
@@ -81,6 +85,15 @@ public class MsgpackGZFileBuilder
     public File getFile()
     {
         return file;
+    }
+
+    public void removeFile()
+    {
+        if (packer == null) {
+            file.delete();
+        } else {
+            log.warn("Cannot delete file {} because packer is not null.", file.getAbsolutePath());
+        }
     }
 
     public void finish()
