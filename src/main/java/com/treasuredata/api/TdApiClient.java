@@ -171,12 +171,22 @@ public class TdApiClient
         return session;
     }
 
+    @Deprecated
     public void uploadBulkImport(String sessionName, File path)
             throws IOException
     {
         String name = path.getName().replace(".", "_");
         Request request = prepareExchange(HttpMethod.PUT,
                 buildUrl("/v3/bulk_import/upload_part", sessionName, name));
+        request.file(path.toPath());
+        ContentResponse response = executeExchange(request);
+    }
+
+    public void uploadBulkImportPart(String sessionName, String uniquePartName, File path)
+            throws IOException
+    {
+        Request request = prepareExchange(HttpMethod.PUT,
+                buildUrl("/v3/bulk_import/upload_part", sessionName, uniquePartName));
         request.file(path.toPath());
         ContentResponse response = executeExchange(request);
     }
