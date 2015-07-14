@@ -6,7 +6,7 @@ TODO: Write short description here
 
 * **Plugin type**: output
 * **Load all or nothing**: yes
-* **Resume supported**: no
+* **Resume supported**: yes
 
 ## Configuration
 
