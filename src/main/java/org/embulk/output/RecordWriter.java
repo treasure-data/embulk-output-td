@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Locale;
 import java.text.NumberFormat;
 import java.util.concurrent.Callable;
 
@@ -39,12 +40,13 @@ public class RecordWriter
     private final Logger log;
     private final TdApiClient client;
     private final String sessionName;
+    private final int taskIndex;
 
     private final MessagePack msgpack;
     private final FieldWriterSet fieldWriters;
     private final File tempDir;
 
-    private int seqid = 0;
+    private int partSeqId = 0;
     private PageReader pageReader;
     private MsgpackGZFileBuilder builder;
 
@@ -52,11 +54,12 @@ public class RecordWriter
     private final int uploadConcurrency;
     private final long fileSplitSize; // unit: kb
 
-    public RecordWriter(PluginTask task, TdApiClient client, FieldWriterSet fieldWriters)
+    public RecordWriter(PluginTask task, int taskIndex, TdApiClient client, FieldWriterSet fieldWriters)
     {
         this.log = Exec.getLogger(getClass());
         this.client = checkNotNull(client);
         this.sessionName = task.getSessionName();
+        this.taskIndex = taskIndex;
 
         this.msgpack = new MessagePack();
         this.fieldWriters = fieldWriters;
@@ -81,7 +84,7 @@ public class RecordWriter
     private void prepareNextBuilder()
             throws IOException
     {
-        String prefix = String.format("%s-%d-", sessionName, seqid);
+        String prefix = String.format("%s-%d-", sessionName);
         File tempFile = File.createTempFile(prefix, ".msgpack.gz", tempDir);
         this.builder = new MsgpackGZFileBuilder(msgpack, tempFile);
     }
@@ -157,25 +160,25 @@ public class RecordWriter
             log.info("{uploading: {rows: {}, size: {} bytes (compressed)}}",
                     builder.getRecordCount(),
                     NumberFormat.getNumberInstance().format(builder.getWrittenSize()));
-            upload(builder);
+            upload(builder, String.format(Locale.ENGLISH, "task-%d.%d", taskIndex, partSeqId));
+            partSeqId++;
             builder = null;
         }
 
         prepareNextBuilder();
     }
 
-    private void upload(final MsgpackGZFileBuilder builder)
+    private void upload(final MsgpackGZFileBuilder builder, final String uniquePartName)
             throws IOException
     {
         executor.joinPartial(uploadConcurrency - 1);
         executor.submit(new Callable<Void>() {
             @Override
             public Void call() throws Exception {
-                client.uploadBulkImport(sessionName, builder.getFile());
+                client.uploadBulkImportPart(sessionName, uniquePartName, builder.getFile());
                 return null;
             }
         }, builder);
-        seqid++;
     }
 
     @Override

@@ -414,14 +414,14 @@ public class TdOutputPlugin
     }
 
     @Override
-    public TransactionalPageOutput open(TaskSource taskSource, Schema schema, int processorIndex)
+    public TransactionalPageOutput open(TaskSource taskSource, Schema schema, int taskIndex)
     {
         final PluginTask task = taskSource.loadTask(PluginTask.class);
 
         RecordWriter closeLater = null;
         try {
             FieldWriterSet fieldWriters = new FieldWriterSet(log, task, schema);
-            RecordWriter recordWriter = closeLater = new RecordWriter(task, newTdApiClient(task), fieldWriters);
+            RecordWriter recordWriter = closeLater = new RecordWriter(task, taskIndex, newTdApiClient(task), fieldWriters);
             recordWriter.open(schema);
             closeLater = null;
             return recordWriter;
