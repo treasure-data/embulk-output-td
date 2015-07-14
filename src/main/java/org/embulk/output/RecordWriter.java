@@ -87,7 +87,7 @@ public class RecordWriter
     private void prepareNextBuilder()
             throws IOException
     {
-        String prefix = String.format("%s-%d-", sessionName);
+        String prefix = String.format("%s-", sessionName);
         File tempFile = File.createTempFile(prefix, ".msgpack.gz", tempDir);
         this.builder = new MsgpackGZFileBuilder(msgpack, tempFile);
     }
