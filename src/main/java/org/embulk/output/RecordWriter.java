@@ -164,7 +164,7 @@ public class RecordWriter
             log.info("{uploading: {rows: {}, size: {} bytes (compressed)}}",
                     builder.getRecordCount(),
                     NumberFormat.getNumberInstance().format(builder.getWrittenSize()));
-            upload(builder, String.format(Locale.ENGLISH, "task-%d.%d", taskIndex, partSeqId));
+            upload(builder, String.format(Locale.ENGLISH, "task-%d_%d", taskIndex, partSeqId));
             partSeqId++;
             builder = null;
         }
