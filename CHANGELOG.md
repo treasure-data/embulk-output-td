@@ -1,3 +1,5 @@
+## 0.1.2 - 2015-07-14
+
 ## 0.1.1 - 2015-07-14
 
 * [maintenance] Make part name unique and idempotent [#9](https://github.com/treasure-data/embulk-output-td/pull/9)
