@@ -102,12 +102,12 @@ public class TdOutputPlugin
         @Override
         @Config("default_timezone")
         @ConfigDefault("\"UTC\"")
-        public DateTimeZone getDefaultTimeZone(); // data connector's default timezone
+        public DateTimeZone getDefaultTimeZone(); // default timezone
 
         @Override
         @Config("default_timestamp_format")
         @ConfigDefault("\"%Y-%m-%d %H:%M:%S.%3N\"")
-        public String getDefaultTimestampFormat(); // data connector's default timestamp format
+        public String getDefaultTimestampFormat(); // default timestamp format
 
         @Config("column_options")
         @ConfigDefault("{}")
