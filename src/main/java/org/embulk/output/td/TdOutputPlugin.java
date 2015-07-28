@@ -1,4 +1,4 @@
-package org.embulk.output;
+package org.embulk.output.td;
 
 import java.io.IOException;
 import java.util.List;
@@ -14,10 +14,8 @@ import com.treasuredata.api.TdApiClientConfig;
 import com.treasuredata.api.TdApiClientConfig.HttpProxyConfig;
 import com.treasuredata.api.TdApiConflictException;
 import com.treasuredata.api.TdApiNotFoundException;
-import com.treasuredata.api.TdApiException;
 import com.treasuredata.api.model.TDBulkImportSession;
 import com.treasuredata.api.model.TDBulkImportSession.ImportStatus;
-import com.treasuredata.api.model.TDDatabase;
 import com.treasuredata.api.model.TDTable;
 import org.embulk.config.CommitReport;
 import org.embulk.config.Config;
@@ -28,7 +26,7 @@ import org.embulk.config.ConfigSource;
 import org.embulk.config.ConfigException;
 import org.embulk.config.Task;
 import org.embulk.config.TaskSource;
-import org.embulk.output.RecordWriter.FieldWriterSet;
+import org.embulk.output.td.RecordWriter.FieldWriterSet;
 import org.embulk.spi.Exec;
 import org.embulk.spi.ExecSession;
 import org.embulk.spi.OutputPlugin;

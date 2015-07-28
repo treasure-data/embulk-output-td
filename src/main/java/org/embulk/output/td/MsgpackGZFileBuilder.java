@@ -1,4 +1,4 @@
-package org.embulk.output;
+package org.embulk.output.td;
 
 import org.embulk.spi.Exec;
 import org.msgpack.MessagePack;

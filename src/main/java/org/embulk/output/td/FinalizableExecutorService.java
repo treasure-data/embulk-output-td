@@ -1,4 +1,4 @@
-package org.embulk.output;
+package org.embulk.output.td;
 
 import java.io.Closeable;
 import java.io.IOException;

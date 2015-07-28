@@ -1,4 +1,4 @@
-package org.embulk.output;
+package org.embulk.output.td;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
@@ -6,7 +6,6 @@ import com.google.common.base.Throwables;
 import com.treasuredata.api.TdApiClient;
 import org.embulk.config.CommitReport;
 import org.embulk.config.ConfigException;
-import org.embulk.output.TdOutputPlugin.PluginTask;
 import org.embulk.spi.Column;
 import org.embulk.spi.ColumnVisitor;
 import org.embulk.spi.Exec;
@@ -35,7 +34,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import org.embulk.output.TdOutputPlugin.UnixTimestampUnit;
 
 public class RecordWriter
         implements TransactionalPageOutput
@@ -57,7 +55,7 @@ public class RecordWriter
     private final int uploadConcurrency;
     private final long fileSplitSize; // unit: kb
 
-    public RecordWriter(PluginTask task, int taskIndex, TdApiClient client, FieldWriterSet fieldWriters)
+    public RecordWriter(TdOutputPlugin.PluginTask task, int taskIndex, TdApiClient client, FieldWriterSet fieldWriters)
     {
         this.log = Exec.getLogger(getClass());
         this.client = checkNotNull(client);
@@ -72,7 +70,7 @@ public class RecordWriter
         this.fileSplitSize = task.getFileSplitSize() * 1024;
     }
 
-    public static void validateSchema(Logger log, PluginTask task, Schema schema)
+    public static void validateSchema(Logger log, TdOutputPlugin.PluginTask task, Schema schema)
     {
         new FieldWriterSet(log, task, schema);
     }
@@ -263,7 +261,7 @@ public class RecordWriter
         private final int fieldCount;
         private final FieldWriter[] fieldWriters;
 
-        public FieldWriterSet(Logger log, PluginTask task, Schema schema)
+        public FieldWriterSet(Logger log, TdOutputPlugin.PluginTask task, Schema schema)
         {
             Optional<String> userDefinedPrimaryKeySourceColumnName = task.getTimeColumn();
             boolean hasPkWriter = false;
@@ -311,7 +309,7 @@ public class RecordWriter
                     case PRIMARY_KEY:
                         log.info("Using {}:{} column as the data partitioning key", columnName, columnType);
                         if (columnType instanceof LongType) {
-                            if (task.getUnixTimestampUnit() != UnixTimestampUnit.SEC) {
+                            if (task.getUnixTimestampUnit() != TdOutputPlugin.UnixTimestampUnit.SEC) {
                                 log.warn("time column is converted from {} to seconds", task.getUnixTimestampUnit());
                             }
                             writer = new UnixTimestampLongFieldWriter(columnName, task.getUnixTimestampUnit().getFractionUnit());
