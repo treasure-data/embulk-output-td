@@ -100,14 +100,20 @@ public class TdOutputPlugin
         public long getFileSplitSize();
 
         @Override
-        @Config("default_timezone")
-        @ConfigDefault("\"UTC\"")
-        public DateTimeZone getDefaultTimeZone(); // default timezone
-
-        @Override
         @Config("default_timestamp_format")
+        // SQL timestamp with milliseconds is, by defualt, used because Hive and Presto use
+        // those format. As timestamp type, Presto
+        //   * cannot parse SQL timestamp with timezone like '2015-02-03 04:05:06.789 UTC'
+        //   * cannot parse SQL timestamp with nanoseconds like '2015-02-03 04:05:06.789012345'
+        //   * cannot parse SQL timestamp with microseconds like '2015-02-03 04:05:06.789012'
+        //   * can parse SQL timestamp with milliseconds like '2015-02-03 04:05:06.789'
+        // On the other hand, Hive
+        //   * cannot parse SQL timestamp with timezone like '2015-02-03 04:05:06.789 UTC'
+        //   * can parse SQL timestamp with nanoseconds like '2015-02-03 04:05:06.789012345'
+        //   * can parse SQL timestamp with microseconds like '2015-02-03 04:05:06.789012'
+        //   * can parse SQL timestamp with milliseconds like '2015-02-03 04:05:06.789'
         @ConfigDefault("\"%Y-%m-%d %H:%M:%S.%3N\"")
-        public String getDefaultTimestampFormat(); // default timestamp format
+        public String getDefaultTimestampFormat();
 
         @Config("column_options")
         @ConfigDefault("{}")
