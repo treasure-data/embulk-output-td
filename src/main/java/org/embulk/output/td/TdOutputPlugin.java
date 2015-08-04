@@ -2,6 +2,7 @@ package org.embulk.output.td;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.Max;
 
@@ -21,7 +22,6 @@ import org.embulk.config.CommitReport;
 import org.embulk.config.Config;
 import org.embulk.config.ConfigDefault;
 import org.embulk.config.ConfigDiff;
-import org.embulk.config.ConfigInject;
 import org.embulk.config.ConfigSource;
 import org.embulk.config.ConfigException;
 import org.embulk.config.Task;
@@ -33,15 +33,16 @@ import org.embulk.spi.OutputPlugin;
 import org.embulk.spi.Schema;
 import org.embulk.spi.TransactionalPageOutput;
 import org.embulk.spi.time.Timestamp;
+import org.embulk.spi.time.TimestampFormatter;
+import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
-import org.jruby.embed.ScriptingContainer;
 import org.slf4j.Logger;
 
 public class TdOutputPlugin
         implements OutputPlugin
 {
     public interface PluginTask
-            extends Task
+            extends Task, TimestampFormatter.Task
     {
         @Config("apikey")
         public String getApiKey();
@@ -59,6 +60,8 @@ public class TdOutputPlugin
         public Optional<HttpProxyTask> getHttpProxy();
 
         //  TODO connect_timeout, read_timeout, send_timeout
+
+        //  TODO mode[append, replace]
 
         @Config("auto_create_table")
         @ConfigDefault("true")
@@ -96,8 +99,25 @@ public class TdOutputPlugin
         @ConfigDefault("16384") // default 16MB (unit: kb)
         public long getFileSplitSize();
 
-        @ConfigInject
-        public ScriptingContainer getJRuby();
+        @Override
+        @Config("default_timestamp_format")
+        // SQL timestamp with milliseconds is, by defualt, used because Hive and Presto use
+        // those format. As timestamp type, Presto
+        //   * cannot parse SQL timestamp with timezone like '2015-02-03 04:05:06.789 UTC'
+        //   * cannot parse SQL timestamp with nanoseconds like '2015-02-03 04:05:06.789012345'
+        //   * cannot parse SQL timestamp with microseconds like '2015-02-03 04:05:06.789012'
+        //   * can parse SQL timestamp with milliseconds like '2015-02-03 04:05:06.789'
+        // On the other hand, Hive
+        //   * cannot parse SQL timestamp with timezone like '2015-02-03 04:05:06.789 UTC'
+        //   * can parse SQL timestamp with nanoseconds like '2015-02-03 04:05:06.789012345'
+        //   * can parse SQL timestamp with microseconds like '2015-02-03 04:05:06.789012'
+        //   * can parse SQL timestamp with milliseconds like '2015-02-03 04:05:06.789'
+        @ConfigDefault("\"%Y-%m-%d %H:%M:%S.%3N\"")
+        public String getDefaultTimestampFormat();
+
+        @Config("column_options")
+        @ConfigDefault("{}")
+        public Map<String, TimestampColumnOption> getColumnOptions();
 
         public boolean getDoUpload();
         public void setDoUpload(boolean doUpload);
@@ -105,6 +125,10 @@ public class TdOutputPlugin
         public String getSessionName();
         public void setSessionName(String session);
     }
+
+    public interface TimestampColumnOption
+            extends Task, TimestampFormatter.TimestampColumnOption
+    {}
 
     public interface HttpProxyTask
             extends Task
@@ -172,6 +196,13 @@ public class TdOutputPlugin
                                   OutputPlugin.Control control)
     {
         final PluginTask task = config.loadConfig(PluginTask.class);
+
+        // TODO mode check
+
+        // check column_options is valid or not
+        for (String columnName : task.getColumnOptions().keySet()) {
+            schema.lookupColumn(columnName); // throws SchemaConfigException
+        }
 
         // generate session name
         task.setSessionName(buildBulkImportSessionName(task, Exec.session()));
