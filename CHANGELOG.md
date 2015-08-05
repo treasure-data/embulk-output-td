@@ -1,3 +1,10 @@
+## 0.1.4 - 2015-XX-XX
+
+## 0.1.3 - 2015-08-05
+
+* [maintenance] Upgrade Embulk v0.6.19
+* [new feature] Add column_options [#11](https://github.com/treasure-data/embulk-output-td/pull/11)
+
 ## 0.1.2 - 2015-07-14
 
 ## 0.1.1 - 2015-07-14
