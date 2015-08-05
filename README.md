@@ -23,6 +23,11 @@ TODO: Write short description here
 - **tmpdir**: temporal directory
 - **upload_concurrency**: upload concurrency (int, default=2). max concurrency is 8.
 - **file_split_size**: split size (long, default=16384 (16MB)).
+- **default_timezone**: default timezone (string, default='UTC')
+- **default_timestamp_format**: default timestamp format (string, default=`%Y-%m-%d %H:%M:%S.%6N`)
+- **column_options**: advanced: a key-value pairs where key is a column name and value is options for the column.
+  - **timezone**: If input column type (embulk type) is timestamp, this plugin needs to format the timestamp value into a SQL string. In this cases, this timezone option is used to control the timezone. (string, value of default_timezone option is used by default)
+  - **format**: If input column type (embulk type) is timestamp, this plugin needs to format the timestamp value into a string. This timestamp_format option is used to control the format of the timestamp. (string, value of default_timestamp_format option is used by default)
 
 ## Example
 Here is sample configuration for TD output plugin.
