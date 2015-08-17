@@ -317,7 +317,8 @@ public class RecordWriter
                             writer = new UnixTimestampLongFieldWriter(columnName, task.getUnixTimestampUnit().getFractionUnit());
                             hasPkWriter = true;
                         } else if (columnType instanceof TimestampType) {
-                            writer = new TimestampStringFieldWriter(timestampFormatters[i], columnName);
+                            writer = new TimestampLongFieldWriter(columnName);
+
                             hasPkWriter = true;
                         } else {
                             throw new ConfigException(String.format("Type of '%s' column must be long or timestamp but got %s",
