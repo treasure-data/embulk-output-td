@@ -20,15 +20,16 @@ sourceCompatibility = 1.7
 targetCompatibility = 1.7
 
 dependencies {
-    compile     "org.embulk:embulk-core:0.6.19"
-    provided    "org.embulk:embulk-core:0.6.19"
-    compile     "org.embulk:embulk-standards:0.6.19"
-    provided    "org.embulk:embulk-standards:0.6.19"
+    compile     "org.embulk:embulk-core:0.6.25"
+    provided    "org.embulk:embulk-core:0.6.25"
+    compile     "org.embulk:embulk-standards:0.6.25"
+    provided    "org.embulk:embulk-standards:0.6.25"
     compile     "org.eclipse.jetty:jetty-client:9.2.2.v20140723"
     compile     "org.msgpack:msgpack:0.6.11"
 
     testCompile "junit:junit:4.+"
     testCompile "org.bigtesting:fixd:1.0.0"
+    testCompile  "org.embulk:embulk-core:0.6.25:tests"
 }
 
 task classpath(type: Copy, dependsOn: ["jar"]) {
