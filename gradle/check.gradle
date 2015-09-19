@@ -1,0 +1,10 @@
+// FindBugs
+// @see https://docs.gradle.org/2.5/userguide/findbugs_plugin.html
+apply plugin: 'findbugs'
+findbugs {
+    ignoreFailures = true
+}
+
+// JaCoCo
+// @see https://docs.gradle.org/2.5/userguide/jacoco_plugin.html
+apply plugin: 'jacoco'
