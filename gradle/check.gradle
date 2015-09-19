@@ -25,3 +25,10 @@ tasks.withType(Pmd) {
 // JaCoCo
 // @see https://docs.gradle.org/2.5/userguide/jacoco_plugin.html
 apply plugin: 'jacoco'
+jacocoTestReport { // will use td-client v0.6.x
+    afterEvaluate {
+        classDirectories = files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: 'com/treasuredata/api/**')
+        })
+    }
+}
