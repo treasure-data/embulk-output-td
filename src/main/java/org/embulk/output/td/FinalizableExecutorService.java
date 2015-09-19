@@ -17,7 +17,8 @@ public class FinalizableExecutorService
     {
         @Override
         public void close()
-                throws IOException {
+                throws IOException
+        {
             // ignore
         }
     }
@@ -25,58 +26,75 @@ public class FinalizableExecutorService
     protected ExecutorService threads;
     protected Queue<RunningTask> runningTasks;
 
-    public FinalizableExecutorService() {
+    public FinalizableExecutorService()
+    {
         this.threads = Executors.newCachedThreadPool();
         this.runningTasks = new LinkedList<>();
     }
 
-    private static class RunningTask {
+    private static class RunningTask
+    {
         private Future<Void> future;
         private Closeable finalizer;
 
-        RunningTask(Future<Void> future, Closeable finalizer) {
+        RunningTask(Future<Void> future, Closeable finalizer)
+        {
             this.future = future;
             this.finalizer = finalizer;
         }
 
-        public void join() throws IOException {
+        public void join()
+                throws IOException
+        {
             try {
                 future.get();
-            } catch (InterruptedException ex) {
-                throw new IOException(ex);
-            } catch (ExecutionException ex) {
-                throw new IOException(ex.getCause());
+            }
+            catch (InterruptedException e) {
+                throw new IOException(e);
+            }
+            catch (ExecutionException e) {
+                throw new IOException(e.getCause());
             }
             finalizer.close();
         }
 
-        public void abort() throws IOException {
+        public void abort()
+                throws IOException
+        {
             finalizer.close();
         }
     }
 
-    public void submit(Callable<Void> task, Closeable finalizer) {
+    public void submit(Callable<Void> task, Closeable finalizer)
+    {
         Future<Void> future = threads.submit(task);
         runningTasks.add(new RunningTask(future, finalizer));
     }
 
-    public void joinPartial(long upto) throws IOException {
-        while(runningTasks.size() > upto) {
+    public void joinPartial(long upto)
+            throws IOException
+    {
+        while (runningTasks.size() > upto) {
             runningTasks.peek().join();
             runningTasks.remove();
         }
     }
 
-    public void joinAll() throws IOException {
+    public void joinAll()
+            throws IOException
+    {
         joinPartial(0);
     }
 
-    public void shutdown() throws IOException {
+    public void shutdown()
+            throws IOException
+    {
         try {
             joinAll();
-        } finally {
+        }
+        finally {
             threads.shutdown();
-            for(RunningTask task : runningTasks) {
+            for (RunningTask task : runningTasks) {
                 task.abort();
             }
         }

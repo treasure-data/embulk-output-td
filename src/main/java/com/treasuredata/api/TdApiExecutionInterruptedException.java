@@ -9,7 +9,8 @@ public class TdApiExecutionInterruptedException
     }
 
     @Override
-    public InterruptedException getCause() {
+    public InterruptedException getCause()
+    {
         return (InterruptedException) super.getCause();
     }
 }

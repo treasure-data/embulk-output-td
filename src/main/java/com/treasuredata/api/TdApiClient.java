@@ -91,7 +91,8 @@ public class TdApiClient
     {
         try {
             http.start();
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             throw new IOException("Failed to start http client", e);
         }
     }
@@ -101,7 +102,8 @@ public class TdApiClient
     {
         try {
             http.stop();
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             throw new RuntimeException("Failed to stop http client", e);
         }
     }
@@ -138,7 +140,8 @@ public class TdApiClient
         return createTable(databaseName, tableName, TDTableType.LOG);
     }
 
-    public TDTable createTable(String databaseName, String tableName, TDTableType tableType) {
+    public TDTable createTable(String databaseName, String tableName, TDTableType tableType)
+    {
         Request request = prepareExchange(HttpMethod.POST,
                 buildUrl("/v3/table/create", databaseName, tableName, tableType.name().toLowerCase()));
         ContentResponse response = executeExchange(request);
@@ -223,8 +226,8 @@ public class TdApiClient
 
     private Request prepareExchange(HttpMethod method, String url)
     {
-        return prepareExchange(method, url, Collections.<String,String>emptyMap(),
-                Collections.<String,String>emptyMap());
+        return prepareExchange(method, url, Collections.<String, String>emptyMap(),
+                Collections.<String, String>emptyMap());
     }
 
     private Request prepareExchange(HttpMethod method,
@@ -248,7 +251,7 @@ public class TdApiClient
         request.agent(config.getAgentName());
         request.header("Authorization", "TD1 " + apiKey);
         //request.timeout(60, TimeUnit.SECONDS);
-        for (Map.Entry<String, String> entry: headers.entrySet()) {
+        for (Map.Entry<String, String> entry : headers.entrySet()) {
             request.header(entry.getKey(), entry.getValue());
         }
         String dateHeader = setDateHeader(request);
@@ -264,7 +267,8 @@ public class TdApiClient
     {
         try {
             return URLEncoder.encode(s, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
+        }
+        catch (UnsupportedEncodingException e) {
             throw new AssertionError(e);
         }
     }
@@ -272,7 +276,8 @@ public class TdApiClient
     private static final ThreadLocal<SimpleDateFormat> RFC2822_FORMAT =
         new ThreadLocal<SimpleDateFormat>() {
             @Override
-            protected SimpleDateFormat initialValue() {
+            protected SimpleDateFormat initialValue()
+            {
                 return new SimpleDateFormat("E, dd MMM yyyy HH:mm:ss Z", Locale.ENGLISH);
             }
         };
@@ -288,10 +293,12 @@ public class TdApiClient
     private static final ThreadLocal<MessageDigest> SHA1 =
         new ThreadLocal<MessageDigest>() {
             @Override
-            protected MessageDigest initialValue() {
+            protected MessageDigest initialValue()
+            {
                 try {
                     return MessageDigest.getInstance("SHA-1");
-                } catch (NoSuchAlgorithmException e) {
+                }
+                catch (NoSuchAlgorithmException e) {
                     throw new RuntimeException("SHA-1 digest algorithm must be available but not found", e);
                 }
             }
@@ -316,8 +323,8 @@ public class TdApiClient
         char[] array = new char[bytes.length * 2];
         for (int i = 0; i < bytes.length; i++) {
             int b = (int) bytes[i];
-            array[i*2] = hexChars[(b & 0xf0) >> 4];
-            array[i*2+1] = hexChars[b & 0x0f];
+            array[i * 2] = hexChars[(b & 0xf0) >> 4];
+            array[i * 2 + 1] = hexChars[b & 0x0f];
         }
         return new String(array);
     }
@@ -333,7 +340,8 @@ public class TdApiClient
                 sb.append("/");
                 sb.append(URLEncoder.encode(param, "UTF-8"));
             }
-        } catch (UnsupportedEncodingException ex) {
+        }
+        catch (UnsupportedEncodingException ex) {
             throw new AssertionError(ex);
         }
         return sb.toString();
@@ -370,10 +378,12 @@ public class TdApiClient
                     // retry on 50x and other errors
                     exception = new TdApiResponseException(status, response.getContent());
 
-                } catch (TdApiException e) {
+                }
+                catch (TdApiException e) {
                     throw e;
 
-                } catch (Exception e) {
+                }
+                catch (Exception e) {
                     // retry on RuntimeException
                     exception = e;
                 }
@@ -393,7 +403,8 @@ public class TdApiClient
                 Thread.sleep(retryWait);
                 retryWait *= 2;
             }
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             throw new TdApiExecutionInterruptedException(e);
         }
     }
@@ -404,14 +415,18 @@ public class TdApiClient
         try {
             objectMapper.writeValue(bo, obj);
             return new String(bo.toByteArray(), "UTF-8");
-        } catch (UnsupportedEncodingException ex) {
+        }
+        catch (UnsupportedEncodingException ex) {
             throw new AssertionError(ex);
-        } catch (IOException ex) {
+        }
+        catch (IOException ex) {
             throw new RuntimeException(ex);
-        } finally {
+        }
+        finally {
             try {
                 bo.close();
-            } catch (IOException ex) {
+            }
+            catch (IOException ex) {
                 throw new RuntimeException(ex);
             }
         }
@@ -421,7 +436,7 @@ public class TdApiClient
     {
         try {
             StringBuilder sb = new StringBuilder();
-            for(int i=0; i < kvs.length; i+=2) {
+            for (int i = 0; i < kvs.length; i += 2) {
                 if (i > 0) {
                     sb.append("&");
                 }
@@ -430,7 +445,8 @@ public class TdApiClient
                   .append(encode(kvs[i + 1]));
             }
             return sb.toString().getBytes("UTF-8");
-        } catch (UnsupportedEncodingException ex) {
+        }
+        catch (UnsupportedEncodingException ex) {
             throw new AssertionError(ex);
         }
     }
@@ -439,7 +455,8 @@ public class TdApiClient
     {
         try {
             return objectMapper.readValue(content, valueType);
-        } catch (IOException ex) {
+        }
+        catch (IOException ex) {
             throw new RuntimeException(ex);
         }
     }

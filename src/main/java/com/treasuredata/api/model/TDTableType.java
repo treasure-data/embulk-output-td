@@ -21,7 +21,8 @@ public enum TDTableType
     {
         if ("log".equals(name)) {
             return LOG;
-        } else if ("item".equals(name)) {
+        }
+        else if ("item".equals(name)) {
             return ITEM;
         }
         throw new RuntimeJsonMappingException("Unexpected string tuple to deserialize TDTableType");

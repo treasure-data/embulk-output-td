@@ -22,7 +22,8 @@ public class TDDatabase
         return name;
     }
 
-    public boolean isWritable() {
+    public boolean isWritable()
+    {
         // TODO not implemented yet
         return true;
     }

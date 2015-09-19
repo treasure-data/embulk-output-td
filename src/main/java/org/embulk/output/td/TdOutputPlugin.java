@@ -34,7 +34,6 @@ import org.embulk.spi.Schema;
 import org.embulk.spi.TransactionalPageOutput;
 import org.embulk.spi.time.Timestamp;
 import org.embulk.spi.time.TimestampFormatter;
-import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.slf4j.Logger;
 
@@ -212,7 +211,8 @@ public class TdOutputPlugin
             String tableName = task.getTable();
             if (task.getAutoCreateTable()) {
                 createTableIfNotExists(client, databaseName, tableName);
-            } else {
+            }
+            else {
                 // check if the database and/or table exist or not
                 validateTableExists(client, databaseName, tableName);
             }
@@ -226,7 +226,8 @@ public class TdOutputPlugin
 
     public ConfigDiff resume(TaskSource taskSource,
             Schema schema, int processorCount,
-            OutputPlugin.Control control) {
+            OutputPlugin.Control control)
+    {
         PluginTask task = taskSource.loadTask(PluginTask.class);
         try (TdApiClient client = newTdApiClient(task)) {
             return doRun(client, task, control);
@@ -264,7 +265,8 @@ public class TdOutputPlugin
         TdApiClient client = new TdApiClient(task.getApiKey(), config);
         try {
             client.start();
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             throw Throwables.propagate(e);
         }
         return client;
@@ -276,7 +278,8 @@ public class TdOutputPlugin
         if (task.isPresent()) {
             HttpProxyTask pt = task.get();
             httpProxyConfig = Optional.of(new HttpProxyConfig(pt.getHost(), pt.getPort(), pt.getUseSsl()));
-        } else {
+        }
+        else {
             httpProxyConfig = Optional.absent();
         }
         return httpProxyConfig;
@@ -288,20 +291,24 @@ public class TdOutputPlugin
         try {
             client.createTable(databaseName, tableName);
             log.debug("Created table \"{}\".\"{}\"", databaseName, tableName);
-        } catch (TdApiNotFoundException e) {
+        }
+        catch (TdApiNotFoundException e) {
             try {
                 client.createDatabase(databaseName);
                 log.debug("Created database \"{}\"", databaseName);
-            } catch (TdApiConflictException ex) {
+            }
+            catch (TdApiConflictException ex) {
                 // ignorable error
             }
             try {
                 client.createTable(databaseName, tableName);
                 log.debug("Created table \"{}\".\"{}\"", databaseName, tableName);
-            } catch (TdApiConflictException exe) {
+            }
+            catch (TdApiConflictException exe) {
                 // ignorable error
             }
-        } catch (TdApiConflictException e) {
+        }
+        catch (TdApiConflictException e) {
             // ignorable error
         }
     }
@@ -315,7 +322,8 @@ public class TdOutputPlugin
                 }
             }
             throw new ConfigException(String.format("Table \"%s\".\"%s\" doesn't exist", databaseName, tableName));
-        } catch (TdApiNotFoundException ex) {
+        }
+        catch (TdApiNotFoundException ex) {
             throw new ConfigException(String.format("Database \"%s\" doesn't exist", databaseName), ex);
         }
     }
@@ -324,7 +332,8 @@ public class TdOutputPlugin
     {
         if (task.getSession().isPresent()) {
             return task.getSession().get();
-        } else {
+        }
+        else {
             Timestamp time = exec.getTransactionTime(); // TODO implement Exec.getTransactionUniqueName()
             return String.format("embulk_%s_%09d",
                     DateTimeFormat.forPattern("yyyyMMdd_HHmmss").withZoneUTC().print(time.getEpochSecond() * 1000),
@@ -340,7 +349,8 @@ public class TdOutputPlugin
         TDBulkImportSession session;
         try {
             client.createBulkImportSession(sessionName, databaseName, tableName);
-        } catch (TdApiConflictException ex) {
+        }
+        catch (TdApiConflictException ex) {
             // ignorable error
         }
         session = client.getBulkImportSession(sessionName);
@@ -376,7 +386,8 @@ public class TdOutputPlugin
                 // freeze
                 try {
                     client.freezeBulkImportSession(sessionName);
-                } catch (TdApiConflictException e) {
+                }
+                catch (TdApiConflictException e) {
                     // ignorable error
                 }
             }
@@ -427,17 +438,20 @@ public class TdOutputPlugin
             if (importSession.is(expecting)) {
                 return importSession;
 
-            } else if (importSession.is(current)) {
+            }
+            else if (importSession.is(current)) {
                 // in progress
 
-            } else {
+            }
+            else {
                 throw new RuntimeException(String.format("Failed to %s bulk import session '%s'",
                             operation, sessionName));
             }
 
             try {
                 Thread.sleep(3000);
-            } catch (InterruptedException e) {
+            }
+            catch (InterruptedException e) {
             }
         }
     }
@@ -450,14 +464,17 @@ public class TdOutputPlugin
         RecordWriter closeLater = null;
         try {
             FieldWriterSet fieldWriters = new FieldWriterSet(log, task, schema);
-            RecordWriter recordWriter = closeLater = new RecordWriter(task, taskIndex, newTdApiClient(task), fieldWriters);
+            closeLater = new RecordWriter(task, taskIndex, newTdApiClient(task), fieldWriters);
+            RecordWriter recordWriter = closeLater;
             recordWriter.open(schema);
             closeLater = null;
             return recordWriter;
 
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             throw Throwables.propagate(e);
-        } finally {
+        }
+        finally {
             if (closeLater != null) {
                 closeLater.close();
             }

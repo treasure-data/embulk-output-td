@@ -21,8 +21,6 @@ import org.embulk.spi.type.StringType;
 import org.embulk.spi.type.TimestampType;
 import org.embulk.spi.type.Type;
 import org.embulk.spi.util.Timestamps;
-import org.joda.time.DateTimeZone;
-import org.jruby.embed.ScriptingContainer;
 import org.msgpack.MessagePack;
 import org.slf4j.Logger;
 
@@ -136,7 +134,8 @@ public class RecordWriter
                         FieldWriter fieldWriter = fieldWriters.getFieldWriter(column.getIndex());
                         try {
                             fieldWriter.writeKeyValue(builder, pageReader, column);
-                        } catch (IOException e) {
+                        }
+                        catch (IOException e) {
                             throw Throwables.propagate(e);
                         }
                     }
@@ -150,7 +149,8 @@ public class RecordWriter
                 }
             }
 
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             throw Throwables.propagate(e);
         }
     }
@@ -206,9 +206,11 @@ public class RecordWriter
     {
         try {
             flush();
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             throw Throwables.propagate(e);
-        } finally {
+        }
+        finally {
             close();
         }
     }
@@ -220,7 +222,8 @@ public class RecordWriter
             try {
                 executor.joinAll();
                 executor.shutdown(); // shutdown calls joinAll
-            } finally {
+            }
+            finally {
                 if (builder != null) {
                     builder.close();
                     builder.delete();
@@ -231,7 +234,8 @@ public class RecordWriter
                     client.close();
                 }
             }
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             throw Throwables.propagate(e);
         }
     }
@@ -285,22 +289,26 @@ public class RecordWriter
                     // found time_column
                     if ("time".equals(userDefinedPrimaryKeySourceColumnName.get())) {
                         mode = ColumnWriterMode.PRIMARY_KEY;
-                    } else {
+                    }
+                    else {
                         mode = ColumnWriterMode.DUPLICATE_PRIMARY_KEY;
                     }
 
-                } else if ("time".equals(columnName)) {
+                }
+                else if ("time".equals(columnName)) {
                     // the column name is same with the primary key name.
                     if (userDefinedPrimaryKeySourceColumnName.isPresent()) {
                         columnName = newColumnUniqueName(columnName, schema);
                         mode = ColumnWriterMode.SIMPLE_VALUE;
                         log.warn("time_column '{}' is set but 'time' column also exists. The existent 'time' column is renamed to {}",
                                 userDefinedPrimaryKeySourceColumnName.get(), "time", "time", columnName);
-                    } else {
+                    }
+                    else {
                         mode = ColumnWriterMode.PRIMARY_KEY;
                     }
 
-                } else {
+                }
+                else {
                     mode = ColumnWriterMode.SIMPLE_VALUE;
                 }
 
@@ -316,11 +324,13 @@ public class RecordWriter
                             }
                             writer = new UnixTimestampLongFieldWriter(columnName, task.getUnixTimestampUnit().getFractionUnit());
                             hasPkWriter = true;
-                        } else if (columnType instanceof TimestampType) {
+                        }
+                        else if (columnType instanceof TimestampType) {
                             writer = new TimestampLongFieldWriter(columnName);
 
                             hasPkWriter = true;
-                        } else {
+                        }
+                        else {
                             throw new ConfigException(String.format("Type of '%s' column must be long or timestamp but got %s",
                                     columnName, columnType));
                         }
@@ -329,18 +339,23 @@ public class RecordWriter
                     case SIMPLE_VALUE:
                         if (columnType instanceof BooleanType) {
                             writer = new BooleanFieldWriter(columnName);
-                        } else if (columnType instanceof LongType) {
+                        }
+                        else if (columnType instanceof LongType) {
                             writer = new LongFieldWriter(columnName);
-                        } else if (columnType instanceof DoubleType) {
+                        }
+                        else if (columnType instanceof DoubleType) {
                             writer = new DoubleFieldWriter(columnName);
-                        } else if (columnType instanceof StringType) {
+                        }
+                        else if (columnType instanceof StringType) {
                             writer = new StringFieldWriter(columnName);
-                        } else if (columnType instanceof TimestampType) {
+                        }
+                        else if (columnType instanceof TimestampType) {
                             writer = new TimestampStringFieldWriter(timestampFormatters[i], columnName);
                             if (firstTimestampColumnIndex < 0) {
                                 firstTimestampColumnIndex = i;
                             }
-                        } else {
+                        }
+                        else {
                             throw new ConfigException("Unsupported type: " + columnType);
                         }
                         break;
@@ -363,10 +378,12 @@ public class RecordWriter
                 if (duplicatePrimaryKeySourceIndex < 0) {
                     if (userDefinedPrimaryKeySourceColumnName.isPresent()) {
                         throw new ConfigException(String.format("time_column '%s' does not exist", userDefinedPrimaryKeySourceColumnName.get()));
-                    } else if (firstTimestampColumnIndex >= 0) {
+                    }
+                    else if (firstTimestampColumnIndex >= 0) {
                         // if time is not found, use the first timestamp column
                         duplicatePrimaryKeySourceIndex = firstTimestampColumnIndex;
-                    } else {
+                    }
+                    else {
                         throw new ConfigException(String.format("TD output plugin requires at least one timestamp column, or a long column named 'time'"));
                     }
                 }
@@ -379,11 +396,13 @@ public class RecordWriter
                     log.info("Duplicating {}:{} column (unix timestamp {}) to 'time' column as seconds for the data partitioning",
                             columnName, columnType, task.getUnixTimestampUnit());
                     writer = new UnixTimestampFieldDuplicator(columnName, "time", task.getUnixTimestampUnit().getFractionUnit());
-                } else if (columnType instanceof TimestampType) {
+                }
+                else if (columnType instanceof TimestampType) {
                     log.info("Duplicating {}:{} column to 'time' column as seconds for the data partitioning",
                             columnName, columnType);
                     writer = new TimestampFieldLongDuplicator(timestampFormatters[duplicatePrimaryKeySourceIndex], columnName, "time");
-                } else {
+                }
+                else {
                     throw new ConfigException(String.format("Type of '%s' column must be long or timestamp but got %s",
                             columnName, columnType));
                 }
@@ -426,7 +445,7 @@ public class RecordWriter
         }
     }
 
-    static abstract class FieldWriter
+    abstract static class FieldWriter
     {
         private final String keyName;
 
@@ -441,7 +460,8 @@ public class RecordWriter
             writeKey(builder);
             if (reader.isNull(column)) {
                 builder.writeNil();
-            } else {
+            }
+            else {
                 writeValue(builder, reader, column);
             }
         }
