@@ -1,15 +1,13 @@
-package org.embulk.output.td;
+package org.embulk.output.td.writer;
 
 import com.google.common.collect.ImmutableList;
 import org.embulk.EmbulkTestRuntime;
 import org.embulk.config.ConfigLoader;
 import org.embulk.config.ConfigSource;
-import org.embulk.output.td.RecordWriter.FieldWriterSet;
+import org.embulk.output.td.TdOutputPlugin;
 import org.embulk.spi.Column;
-import org.embulk.spi.ColumnConfig;
 import org.embulk.spi.Exec;
 import org.embulk.spi.Schema;
-import org.embulk.spi.SchemaConfig;
 import org.embulk.spi.type.Type;
 import org.embulk.spi.type.Types;
 import org.junit.Before;
@@ -20,7 +18,7 @@ import org.slf4j.Logger;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class TestFieldWriter
+public class TestFieldWriterSet
 {
     @Rule
     public EmbulkTestRuntime runtime = new EmbulkTestRuntime();
@@ -30,7 +28,7 @@ public class TestFieldWriter
     @Before
     public void createLogger()
     {
-        log = Exec.getLogger(TestFieldWriter.class);
+        log = Exec.getLogger(TestFieldWriterSet.class);
     }
 
     private ConfigSource config()
@@ -76,8 +74,8 @@ public class TestFieldWriter
             FieldWriterSet writers = new FieldWriterSet(log, task(outConfig), schema);
 
             assertEquals(schema.getColumnCount(), writers.getFieldCount());
-            assertTrue(writers.getFieldWriter(0) instanceof RecordWriter.TimestampLongFieldWriter);
-            assertTrue(writers.getFieldWriter(1) instanceof RecordWriter.TimestampStringFieldWriter);
+            assertTrue(writers.getFieldWriter(0) instanceof TimestampLongFieldWriter);
+            assertTrue(writers.getFieldWriter(1) instanceof TimestampStringFieldWriter);
         }
 
         { // time column doesn't exists. users need to specify another column as time column
@@ -98,8 +96,8 @@ public class TestFieldWriter
             FieldWriterSet writers = new FieldWriterSet(log, task(outConfig), schema);
 
             assertEquals(schema.getColumnCount() + 1, writers.getFieldCount());
-            assertTrue(writers.getFieldWriter(0) instanceof RecordWriter.TimestampStringFieldWriter);
-            assertTrue(writers.getFieldWriter(1) instanceof RecordWriter.TimestampFieldLongDuplicator);
+            assertTrue(writers.getFieldWriter(0) instanceof TimestampStringFieldWriter);
+            assertTrue(writers.getFieldWriter(1) instanceof TimestampFieldLongDuplicator);
         }
     }
 }

@@ -6,6 +6,7 @@ import java.util.Map;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.Max;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -26,7 +27,7 @@ import org.embulk.config.ConfigSource;
 import org.embulk.config.ConfigException;
 import org.embulk.config.Task;
 import org.embulk.config.TaskSource;
-import org.embulk.output.td.RecordWriter.FieldWriterSet;
+import org.embulk.output.td.writer.FieldWriterSet;
 import org.embulk.spi.Exec;
 import org.embulk.spi.ExecSession;
 import org.embulk.spi.OutputPlugin;
@@ -172,7 +173,7 @@ public class TdOutputPlugin
             case "nano": return NANO;
             default:
                 throw new ConfigException(
-                        String.format("Unknown unix_timestamp_unit '%s'. Supported units are sec, milli, micro, and nano"));
+                        String.format("Unknown unix_timestamp_unit '%s'. Supported units are sec, milli, micro, and nano", s));
             }
         }
 
@@ -199,9 +200,7 @@ public class TdOutputPlugin
         // TODO mode check
 
         // check column_options is valid or not
-        for (String columnName : task.getColumnOptions().keySet()) {
-            schema.lookupColumn(columnName); // throws SchemaConfigException
-        }
+        checkColumnOptions(schema, task.getColumnOptions());
 
         // generate session name
         task.setSessionName(buildBulkImportSessionName(task, Exec.session()));
@@ -234,7 +233,8 @@ public class TdOutputPlugin
         }
     }
 
-    private ConfigDiff doRun(TdApiClient client, PluginTask task, OutputPlugin.Control control)
+    @VisibleForTesting
+    ConfigDiff doRun(TdApiClient client, PluginTask task, OutputPlugin.Control control)
     {
         boolean doUpload = startBulkImportSession(client, task.getSessionName(), task.getDatabase(), task.getTable());
         task.setDoUpload(doUpload);
@@ -258,7 +258,16 @@ public class TdOutputPlugin
         }
     }
 
-    private TdApiClient newTdApiClient(final PluginTask task)
+    @VisibleForTesting
+    void checkColumnOptions(Schema schema, Map<String, TimestampColumnOption> columnOptions)
+    {
+        for (String columnName : columnOptions.keySet()) {
+            schema.lookupColumn(columnName); // throws SchemaConfigException
+        }
+    }
+
+    @VisibleForTesting
+    TdApiClient newTdApiClient(final PluginTask task)
     {
         Optional<HttpProxyConfig> httpProxyConfig = newHttpProxyConfig(task.getHttpProxy());
         TdApiClientConfig config = new TdApiClientConfig(task.getEndpoint(), task.getUseSsl(), httpProxyConfig);
@@ -285,7 +294,8 @@ public class TdOutputPlugin
         return httpProxyConfig;
     }
 
-    private void createTableIfNotExists(TdApiClient client, String databaseName, String tableName)
+    @VisibleForTesting
+    void createTableIfNotExists(TdApiClient client, String databaseName, String tableName)
     {
         log.debug("Creating table \"{}\".\"{}\" if not exists", databaseName, tableName);
         try {
@@ -313,7 +323,8 @@ public class TdOutputPlugin
         }
     }
 
-    private void validateTableExists(TdApiClient client, String databaseName, String tableName)
+    @VisibleForTesting
+    void validateTableExists(TdApiClient client, String databaseName, String tableName)
     {
         try {
             for (TDTable table : client.getTables(databaseName)) {
@@ -328,7 +339,8 @@ public class TdOutputPlugin
         }
     }
 
-    private String buildBulkImportSessionName(PluginTask task, ExecSession exec)
+    @VisibleForTesting
+    String buildBulkImportSessionName(PluginTask task, ExecSession exec)
     {
         if (task.getSession().isPresent()) {
             return task.getSession().get();
@@ -342,7 +354,8 @@ public class TdOutputPlugin
     }
 
     // return false if all files are already uploaded
-    private boolean startBulkImportSession(TdApiClient client,
+    @VisibleForTesting
+    boolean startBulkImportSession(TdApiClient client,
             String sessionName, String databaseName, String tableName)
     {
         log.info("Create bulk_import session {}", sessionName);
@@ -376,7 +389,8 @@ public class TdOutputPlugin
         }
     }
 
-    private void completeBulkImportSession(TdApiClient client, String sessionName, int priority)
+    @VisibleForTesting
+    void completeBulkImportSession(TdApiClient client, String sessionName, int priority)
     {
         TDBulkImportSession session = client.getBulkImportSession(sessionName);
 
@@ -428,7 +442,8 @@ public class TdOutputPlugin
         }
     }
 
-    private TDBulkImportSession waitForStatusChange(TdApiClient client, String sessionName,
+    @VisibleForTesting
+    TDBulkImportSession waitForStatusChange(TdApiClient client, String sessionName,
             ImportStatus current, ImportStatus expecting, String operation)
     {
         TDBulkImportSession importSession;
