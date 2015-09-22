@@ -1,22 +1,21 @@
 package org.embulk.output.td.writer;
 
-import com.google.common.collect.ImmutableList;
 import org.embulk.EmbulkTestRuntime;
-import org.embulk.config.ConfigLoader;
+import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
-import org.embulk.output.td.TdOutputPlugin;
-import org.embulk.spi.Column;
 import org.embulk.spi.Exec;
 import org.embulk.spi.Schema;
-import org.embulk.spi.type.Type;
 import org.embulk.spi.type.Types;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 
-import static org.junit.Assert.assertEquals;
+import static org.embulk.output.td.TestTdOutputPlugin.config;
+import static org.embulk.output.td.TestTdOutputPlugin.pluginTask;
+import static org.embulk.output.td.TestTdOutputPlugin.schema;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class TestFieldWriterSet
 {
@@ -24,80 +23,124 @@ public class TestFieldWriterSet
     public EmbulkTestRuntime runtime = new EmbulkTestRuntime();
 
     private Logger log;
+    private ConfigSource config;
+    private Schema schema;
 
     @Before
-    public void createLogger()
+    public void createResources()
     {
         log = Exec.getLogger(TestFieldWriterSet.class);
-    }
-
-    private ConfigSource config()
-    {
-        return new ConfigLoader(runtime.getModelManager()).newConfigSource();
-    }
-
-    private Schema schema(Column... columns)
-    {
-        ImmutableList.Builder<Column> builder = new ImmutableList.Builder<Column>();
-        for (Column col : columns) {
-            builder.add(col);
-        }
-        return new Schema(builder.build());
-    }
-
-    private Column column(int index, String name, Type type)
-    {
-        return new Column(index, name, type);
-    }
-
-    private TdOutputPlugin.PluginTask task(ConfigSource outConfig)
-    {
-        return outConfig.loadConfig(TdOutputPlugin.PluginTask.class);
+        config = config();
     }
 
     @Test
-    public void test()
+    public void validateFieldWriterSet()
     {
-        { // time column exists
-            // out: config
-            ConfigSource outConfig = config()
-                    .set("apikey", "xxx")
-                    .set("database", "mydb")
-                    .set("table", "mytbl");
+        { // if schema doesn't have appropriate time column, it throws ConfigError.
+            schema = schema("_c0", Types.STRING, "time", Types.STRING); // not long or timestamp
+            try {
+                new FieldWriterSet(log, pluginTask(config), schema);
+                fail();
+            }
+            catch (Throwable t) {
+                assertTrue(t instanceof ConfigException);
+            }
+        }
 
-            // schema
-            Schema schema = schema(
-                    column(0, "time", Types.TIMESTAMP),
-                    column(1, "c1", Types.TIMESTAMP));
+        { // if schema doesn't have time column and the user doesn't specify time_column option, it throws ConfigError.
+            schema = schema("_c0", Types.STRING, "_c1", Types.STRING);
+            try {
+                new FieldWriterSet(log, pluginTask(config), schema);
+                fail();
+            }
+            catch (Throwable t) {
+                assertTrue(t instanceof ConfigException);
+            }
+        }
 
-            // create field writers
-            FieldWriterSet writers = new FieldWriterSet(log, task(outConfig), schema);
+        { // if schema doesn't have a column specified as time_column column, it throws ConfigError
+            schema = schema("_c0", Types.STRING, "_c1", Types.STRING);
+            try {
+                new FieldWriterSet(log, pluginTask(config.deepCopy().set("time_column", "_c2")), schema);
+                fail();
+            }
+            catch (Throwable t) {
+                assertTrue(t instanceof ConfigException);
+            }
+        }
 
-            assertEquals(schema.getColumnCount(), writers.getFieldCount());
+        { // if time_column column is not appropriate column type, it throws ConfigError.
+            schema = schema("_c0", Types.STRING, "_c1", Types.STRING);
+            try {
+                new FieldWriterSet(log, pluginTask(config.deepCopy().set("time_column", "_c1")), schema);
+                fail();
+            }
+            catch (Throwable t) {
+                assertTrue(t instanceof ConfigException);
+            }
+        }
+    }
+
+    @Test
+    public void hasTimeColumn()
+    {
+        { // time column (timestamp type) exists
+            Schema schema = schema("time", Types.TIMESTAMP, "_c0", Types.TIMESTAMP);
+            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config), schema);
+
             assertTrue(writers.getFieldWriter(0) instanceof TimestampLongFieldWriter);
-            assertTrue(writers.getFieldWriter(1) instanceof TimestampStringFieldWriter);
         }
 
-        { // time column doesn't exists. users need to specify another column as time column
-            // out: config
-            ConfigSource outConfig = config()
-                    .set("apikey", "xxx")
-                    .set("database", "mydb")
-                    .set("table", "mytbl")
-                    .set("time_column", "c1");
-            TdOutputPlugin.PluginTask task = outConfig.loadConfig(TdOutputPlugin.PluginTask.class);
+        { // time column (long type) exists
+            Schema schema = schema("time", Types.LONG, "_c0", Types.TIMESTAMP);
+            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config), schema);
 
-            // schema
-            Schema schema = schema(
-                    column(0, "c0", Types.TIMESTAMP),
-                    column(1, "c1", Types.TIMESTAMP));
+            assertTrue(writers.getFieldWriter(0) instanceof UnixTimestampLongFieldWriter);
 
-            // create field writers
-            FieldWriterSet writers = new FieldWriterSet(log, task(outConfig), schema);
-
-            assertEquals(schema.getColumnCount() + 1, writers.getFieldCount());
-            assertTrue(writers.getFieldWriter(0) instanceof TimestampStringFieldWriter);
-            assertTrue(writers.getFieldWriter(1) instanceof TimestampFieldLongDuplicator);
         }
+    }
+
+    @Test
+    public void specifiedTimeColumnOption()
+    {
+        { // time_column option (timestamp type)
+            Schema schema = schema("_c0", Types.TIMESTAMP, "_c1", Types.STRING);
+            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config.deepCopy().set("time_column", "_c0")), schema);
+
+            assertTrue(writers.getFieldWriter(0) instanceof TimestampFieldLongDuplicator);
+        }
+
+        { // time_column option (long type)
+            Schema schema = schema("_c0", Types.LONG, "_c1", Types.STRING);
+            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config.deepCopy().set("time_column", "_c0")), schema);
+
+            assertTrue(writers.getFieldWriter(0) instanceof UnixTimestampFieldDuplicator);
+        }
+
+        { // time_column option (typestamp type) if time column exists
+            Schema schema = schema("_c0", Types.TIMESTAMP, "time", Types.TIMESTAMP);
+            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config.deepCopy().set("time_column", "_c0")), schema);
+
+            assertTrue(writers.getFieldWriter(0) instanceof TimestampFieldLongDuplicator); // c0
+            assertTrue(writers.getFieldWriter(1) instanceof TimestampStringFieldWriter); // renamed column
+        }
+
+        { // time_column option (long type) if time column exists
+            Schema schema = schema("_c0", Types.LONG, "time", Types.TIMESTAMP);
+            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config.deepCopy().set("time_column", "_c0")), schema);
+
+            assertTrue(writers.getFieldWriter(0) instanceof UnixTimestampFieldDuplicator); // c0
+            assertTrue(writers.getFieldWriter(1) instanceof TimestampStringFieldWriter); // renamed column
+        }
+    }
+
+    @Test
+    public void useFirstTimestampColumn()
+            throws Exception
+    {
+        Schema schema = schema("_c0", Types.TIMESTAMP, "_c1", Types.LONG);
+        FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config), schema);
+
+        assertTrue(writers.getFieldWriter(0) instanceof TimestampFieldLongDuplicator);
     }
 }
