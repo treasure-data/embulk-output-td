@@ -3,7 +3,6 @@ package com.treasuredata.api;
 import com.google.common.base.Optional;
 
 public class TdApiClientConfig
-        implements TdApiConstants
 {
     public static class HttpProxyConfig
     {
@@ -73,7 +72,8 @@ public class TdApiClientConfig
         return httpProxyConfig;
     }
 
-    public String getAgentName() {
-        return AGENT_NAME;
+    public String getAgentName()
+    {
+        return TdApiConstants.AGENT_NAME;
     }
 }

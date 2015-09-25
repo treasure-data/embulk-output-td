@@ -20,7 +20,7 @@ public class TDArrayColumnType
     @Override
     public String toString()
     {
-        return "array<"+elementType+">";
+        return "array<" + elementType + ">";
     }
 
     @Override

@@ -1,3 +1,12 @@
+// Checkstyle
+// @see https://docs.gradle.org/2.5/userguide/checkstyle_plugin.html
+apply plugin: 'checkstyle'
+checkstyle {
+    ignoreFailures = true
+    // @see https://github.com/facebook/presto/blob/master/src/checkstyle/checks.xml
+    //configFile = rootProject.file('./checkstyle.xml') // default {project.projectDir}/config/checkstyle/checkstyle.xml
+}
+
 // FindBugs
 // @see https://docs.gradle.org/2.5/userguide/findbugs_plugin.html
 apply plugin: 'findbugs'
@@ -5,6 +14,21 @@ findbugs {
     ignoreFailures = true
 }
 
+// PMD
+// @see https://docs.gradle.org/2.5/userguide/pmd_plugin.html
+apply plugin: 'pmd'
+tasks.withType(Pmd) {
+    ignoreFailures = true
+    reports.html.enabled true
+}
+
 // JaCoCo
 // @see https://docs.gradle.org/2.5/userguide/jacoco_plugin.html
 apply plugin: 'jacoco'
+jacocoTestReport { // will use td-client v0.6.x
+    afterEvaluate {
+        classDirectories = files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: 'com/treasuredata/api/**')
+        })
+    }
+}

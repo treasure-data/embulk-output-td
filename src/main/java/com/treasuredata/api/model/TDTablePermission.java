@@ -17,12 +17,14 @@ public class TDTablePermission
     }
 
     @JsonProperty("importable")
-    public boolean isImportable() {
+    public boolean isImportable()
+    {
         return importable;
     }
 
     @JsonProperty("queryable")
-    public boolean isQueryable() {
+    public boolean isQueryable()
+    {
         return queryable;
     }
 

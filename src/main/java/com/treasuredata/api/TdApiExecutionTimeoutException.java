@@ -11,7 +11,8 @@ public class TdApiExecutionTimeoutException
     }
 
     @Override
-    public TimeoutException getCause() {
+    public TimeoutException getCause()
+    {
         return (TimeoutException) super.getCause();
     }
 }

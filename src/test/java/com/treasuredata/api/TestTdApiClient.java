@@ -47,7 +47,7 @@ public class TestTdApiClient
     public void stopTdApiClient()
             throws Exception
     {
-        client.close();;
+        client.close();
     }
 
     private static final String DATABASE_LIST_JSON =

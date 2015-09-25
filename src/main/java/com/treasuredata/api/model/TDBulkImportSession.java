@@ -143,13 +143,15 @@ public class TDBulkImportSession
 
     public String getErrorMessage()
     {
-        if (validRecords == 0)
+        if (validRecords == 0) {
             return "No record processed";
-        if (errorRecords > 0)
+        }
+        if (errorRecords > 0) {
             return String.format("%d invalid parts", errorParts);
-        if (errorRecords > 0)
+        }
+        if (errorRecords > 0) {
             return String.format("%d invalid records", errorRecords);
-
+        }
         return null;
     }
 }

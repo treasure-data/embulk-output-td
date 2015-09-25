@@ -39,19 +39,24 @@ public class TDColumnTypeDeserializer
         if (p.scan("string")) {
             return TDPrimitiveColumnType.STRING;
 
-        } else if (p.scan("int")) {
+        }
+        else if (p.scan("int")) {
             return TDPrimitiveColumnType.INT;
 
-        } else if (p.scan("long")) {
+        }
+        else if (p.scan("long")) {
             return TDPrimitiveColumnType.LONG;
 
-        } else if (p.scan("double")) {
+        }
+        else if (p.scan("double")) {
             return TDPrimitiveColumnType.DOUBLE;
 
-        } else if (p.scan("float")) {
+        }
+        else if (p.scan("float")) {
             return TDPrimitiveColumnType.FLOAT;
 
-        } else if (p.scan("array")) {
+        }
+        else if (p.scan("array")) {
             if (!p.scan("<")) {
                 throw new IllegalArgumentException("Cannot parse type: expected '<' for array type: " + p.getString());
             }
@@ -61,7 +66,8 @@ public class TDColumnTypeDeserializer
             }
             return new TDArrayColumnType(elementType);
 
-        } else if (p.scan("map")) {
+        }
+        else if (p.scan("map")) {
             if (!p.scan("<")) {
                 throw new IllegalArgumentException("Cannot parse type: expected '<' for map type: " + p.getString());
             }
@@ -75,24 +81,29 @@ public class TDColumnTypeDeserializer
             }
             return new TDMapColumnType(keyType, valueType);
 
-        } else {
+        }
+        else {
             throw new IllegalArgumentException("Cannot parse type: " + p.getString());
         }
     }
 
-    private static class Parser {
+    private static class Parser
+    {
         private final String string;
         private int offset;
 
-        public Parser(String string) {
+        public Parser(String string)
+        {
             this.string = string;
         }
 
-        public String getString() {
+        public String getString()
+        {
             return string;
         }
 
-        public boolean scan(String s) {
+        public boolean scan(String s)
+        {
             skipSpaces();
             if (string.startsWith(s, offset)) {
                 offset += s.length();
@@ -101,12 +112,14 @@ public class TDColumnTypeDeserializer
             return false;
         }
 
-        public boolean eof() {
+        public boolean eof()
+        {
             skipSpaces();
             return string.length() <= offset;
         }
 
-        private void skipSpaces() {
+        private void skipSpaces()
+        {
             while (string.startsWith(" ", offset)) {
                 offset++;
             }

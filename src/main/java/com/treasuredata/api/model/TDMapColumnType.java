@@ -27,7 +27,7 @@ public class TDMapColumnType
     @Override
     public String toString()
     {
-        return "map<"+keyType+","+valueType+">";
+        return "map<" + keyType + "," + valueType + ">";
     }
 
     @Override

@@ -1,6 +1,5 @@
 package org.embulk.output.td;
 
-import org.embulk.spi.Exec;
 import org.msgpack.MessagePack;
 import org.msgpack.packer.Packer;
 
@@ -18,29 +17,35 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class MsgpackGZFileBuilder
         implements Closeable
 {
-    static class DataSizeFilter extends FilterOutputStream {
+    static class DataSizeFilter
+            extends FilterOutputStream
+    {
         private long size = 0;
 
-        public DataSizeFilter(OutputStream out) {
+        public DataSizeFilter(OutputStream out)
+        {
             super(out);
         }
 
         @Override
-        public void write(int b) throws IOException
+        public void write(int b)
+                throws IOException
         {
             size += 1;
             super.write(b);
         }
 
         @Override
-        public void write(byte[] b, int off, int len) throws IOException
+        public void write(byte[] b, int off, int len)
+                throws IOException
         {
             size += len;
             super.write(b, off, len);
         }
 
         @Override
-        public void close() throws IOException
+        public void close()
+                throws IOException
         {
             super.close();
         }
@@ -94,7 +99,8 @@ public class MsgpackGZFileBuilder
     {
         try {
             packer.flush();
-        } finally {
+        }
+        finally {
             close();
         }
     }

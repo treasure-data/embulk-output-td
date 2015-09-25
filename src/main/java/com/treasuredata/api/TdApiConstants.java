@@ -1,6 +1,10 @@
 package com.treasuredata.api;
 
-public interface TdApiConstants
+public final class TdApiConstants
 {
-    String AGENT_NAME = "TdApiClient v0.6";
+    public static final String AGENT_NAME = "TdApiClient v0.6";
+
+    private TdApiConstants()
+    {
+    }
 }

@@ -43,13 +43,15 @@ public class TDColumn
                     TDColumnTypeDeserializer.parseColumnType(tuple[1]),
                     tuple[0].getBytes());
 
-        } else if (tuple != null && tuple.length == 3) {
+        }
+        else if (tuple != null && tuple.length == 3) {
             return new TDColumn(
                     tuple[0],
                     TDColumnTypeDeserializer.parseColumnType(tuple[1]),
                     tuple[2].getBytes());
 
-        } else {
+        }
+        else {
             throw new RuntimeJsonMappingException("Unexpected string tuple to deserialize TDColumn");
         }
     }
