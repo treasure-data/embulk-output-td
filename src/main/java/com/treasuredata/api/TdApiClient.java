@@ -157,6 +157,13 @@ public class TdApiClient
         ContentResponse response = executeExchange(request);
     }
 
+    public void renameTable(String databaseName, String oldName, String newName)
+    {
+        Request request = prepareExchange(HttpMethod.POST,
+                buildUrl("/v3/table/rename", databaseName, oldName, newName));
+        ContentResponse response = executeExchange(request);
+    }
+
     public void createBulkImportSession(String sessionName, String databaseName, String tableName)
     {
         Request request = prepareExchange(HttpMethod.POST,

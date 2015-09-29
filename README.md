@@ -15,6 +15,7 @@ TODO: Write short description here
 - **http_proxy**: http proxy configuration (tuple of host, port and useSsl, default is null)
 - **use_ssl**: the flag (boolean, default=true)
 - **auto_create_table**: the flag for creating the database and/or the table if they don't exist (boolean, default=true)
+- **mode**: two ways to modify data [append, replace] (string, default='append')
 - **database**: database name (string, required)
 - **table**: table name (string, required)
 - **session**: bulk_import session name (string, optional)
