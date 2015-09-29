@@ -100,6 +100,10 @@ public class TdOutputPlugin
         @ConfigDefault("null")
         public Optional<String> getTimeColumn();
 
+        @Config("time_value")
+        @ConfigDefault("null")
+        public Optional<Long> getTimeValue();  // TODO allow timestamp format such as "2015-01-01 00:00:00 UTC" as well as unixtime integer
+
         @Config("unix_timestamp_unit")
         @ConfigDefault("\"sec\"")
         public UnixTimestampUnit getUnixTimestampUnit();
@@ -387,7 +391,7 @@ public class TdOutputPlugin
     }
 
     @VisibleForTesting
-    TdApiClient newTdApiClient(final PluginTask task)
+    public TdApiClient newTdApiClient(final PluginTask task)
     {
         Optional<HttpProxyConfig> httpProxyConfig = newHttpProxyConfig(task.getHttpProxy());
         TdApiClientConfig config = new TdApiClientConfig(task.getEndpoint(), task.getUseSsl(), httpProxyConfig);

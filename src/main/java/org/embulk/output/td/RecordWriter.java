@@ -68,7 +68,8 @@ public class RecordWriter
         new FieldWriterSet(log, task, schema);
     }
 
-    void open(final Schema schema)
+    @VisibleForTesting
+    public void open(final Schema schema)
             throws IOException
     {
         this.pageReader = new PageReader(checkNotNull(schema));
@@ -84,7 +85,7 @@ public class RecordWriter
     }
 
     @VisibleForTesting
-    MsgpackGZFileBuilder getBuilder()
+    public MsgpackGZFileBuilder getBuilder()
     {
         return builder;
     }
@@ -96,7 +97,7 @@ public class RecordWriter
 
         try {
             while (pageReader.nextRecord()) {
-                builder.writeMapBegin(fieldWriters.getFieldCount());
+                fieldWriters.beginRecord(builder);
 
                 pageReader.getSchema().visitColumns(new ColumnVisitor() {
                     @Override
@@ -141,7 +142,7 @@ public class RecordWriter
                     }
                 });
 
-                builder.writeMapEnd();
+                fieldWriters.endRecord(builder);
 
                 if (builder.getWrittenSize() > fileSplitSize) {
                     flush();
