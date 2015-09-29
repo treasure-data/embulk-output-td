@@ -63,9 +63,6 @@ public class TdOutputPlugin
 
         @Config("mode")
         @ConfigDefault("\"append\"")
-        public String getModeConfig();
-
-        public void setMode(Mode mode);
         public Mode getMode();
 
         @Config("auto_create_table")
@@ -77,10 +74,9 @@ public class TdOutputPlugin
 
         @Config("table")
         public String getTable();
-        public void setTable(String name);
 
-        public String getOriginalTable();
-        public void setOriginalTable(String name);
+        public void setLoadTargetTableName(String name);
+        public String getLoadTargetTableName();
 
         @Config("session")
         @ConfigDefault("null")
@@ -142,6 +138,32 @@ public class TdOutputPlugin
     public enum Mode
     {
         APPEND, REPLACE;
+
+        @JsonCreator
+        public static Mode fromConfig(String value)
+        {
+            switch(value) {
+            case "append":
+                return APPEND;
+            case "replace":
+                return REPLACE;
+            default:
+                throw new ConfigException(String.format("Unknown mode '%s'. Supported modes are [append, replace]", value));
+            }
+        }
+
+        @JsonValue
+        public String toString()
+        {
+            switch(this) {
+            case APPEND:
+                return "append";
+            case REPLACE:
+                return "replace";
+            default:
+                throw new IllegalStateException();
+            }
+        }
     }
 
     public interface HttpProxyTask
@@ -211,8 +233,6 @@ public class TdOutputPlugin
     {
         final PluginTask task = config.loadConfig(PluginTask.class);
 
-        setMode(task);
-
         // check column_options is valid or not
         checkColumnOptions(schema, task.getColumnOptions());
 
@@ -223,17 +243,23 @@ public class TdOutputPlugin
             String databaseName = task.getDatabase();
             String tableName = task.getTable();
 
-            if (task.getAutoCreateTable()) {
-                createTableIfNotExists(client, databaseName, tableName);
-            }
-            else {
-                // check if the database and/or table exist or not
-                validateTableExists(client, databaseName, tableName);
-            }
+            switch (task.getMode()) {
+            case APPEND:
+                if (task.getAutoCreateTable()) {
+                    // auto_create_table is valid only with append mode (replace mode always creates a new table)
+                    createTableIfNotExists(client, databaseName, tableName);
+                }
+                else {
+                    // check if the database and/or table exist or not
+                    validateTableExists(client, databaseName, tableName);
+                }
+                task.setLoadTargetTableName(tableName);
+                break;
 
-            task.setOriginalTable(tableName);
-            if (isReplaceMode(task)) {
-                createTableByPrefix(task, client, databaseName, getTablePrefix(task, tableName));
+            case REPLACE:
+                task.setLoadTargetTableName(
+                        createTemporaryTableWithPrefix(task, client, databaseName, makeTablePrefix(task)));
+                break;
             }
 
             // validate FieldWriterSet configuration before transaction is started
@@ -256,14 +282,19 @@ public class TdOutputPlugin
     @VisibleForTesting
     ConfigDiff doRun(TdApiClient client, PluginTask task, OutputPlugin.Control control)
     {
-        boolean doUpload = startBulkImportSession(client, task.getSessionName(), task.getDatabase(), task.getTable());
+        boolean doUpload = startBulkImportSession(client, task.getSessionName(), task.getDatabase(), task.getLoadTargetTableName());
         task.setDoUpload(doUpload);
         control.run(task.dump());
         completeBulkImportSession(client, task.getSessionName(), 0);  // TODO perform job priority
 
-        if (isReplaceMode(task)) {
-            swapTable(client, task.getDatabase(), task.getTable(), task.getOriginalTable());
-            deleteTableIfExists(client, task.getDatabase(), task.getTable());
+        // commit
+        switch (task.getMode()) {
+        case APPEND:
+            // already done
+            break;
+        case REPLACE:
+            // swap table
+            swapTable(client, task.getDatabase(), task.getLoadTargetTableName(), task.getTable());
         }
 
         ConfigDiff configDiff = Exec.newConfigDiff();
@@ -283,29 +314,9 @@ public class TdOutputPlugin
         }
     }
 
-    @VisibleForTesting
-    void setMode(PluginTask task)
+    private String makeTablePrefix(PluginTask task)
     {
-        switch(task.getModeConfig()) {
-            case "append":
-                task.setMode(Mode.APPEND);
-                break;
-            case "replace":
-                task.setMode(Mode.REPLACE);
-                break;
-            default:
-                throw new ConfigException(String.format("Unknown mode '%s'. Supported modes are [append, replace]", task.getModeConfig()));
-        }
-    }
-
-    private boolean isReplaceMode(PluginTask task)
-    {
-        return task.getMode() == Mode.REPLACE;
-    }
-
-    private String getTablePrefix(PluginTask task, String originalTableName)
-    {
-        return originalTableName + "_" + task.getSessionName();
+        return task.getTable() + "_" + task.getSessionName();
     }
 
     @VisibleForTesting
@@ -374,7 +385,7 @@ public class TdOutputPlugin
     }
 
     @VisibleForTesting
-    void createTableByPrefix(PluginTask task, TdApiClient client, String databaseName, String tablePrefix)
+    String createTemporaryTableWithPrefix(PluginTask task, TdApiClient client, String databaseName, String tablePrefix)
             throws TdApiConflictException
     {
         String tableName = tablePrefix;
@@ -383,8 +394,7 @@ public class TdOutputPlugin
             try {
                 client.createTable(databaseName, tableName);
                 log.debug("Created temporal table \"{}\".\"{}\"", databaseName, tableName);
-                task.setTable(tableName);
-                return;
+                return tableName;
             }
             catch (TdApiConflictException e) {
                 log.debug("\"{}\".\"{}\" table already exists. Renaming temporal table.", databaseName, tableName);
@@ -545,20 +555,6 @@ public class TdOutputPlugin
     void swapTable(TdApiClient client, String databaseName, String tableName0, String tableName1)
     {
         client.swapTable(databaseName, tableName0, tableName1);
-    }
-
-    @VisibleForTesting
-    void deleteTableIfExists(TdApiClient client, String databaseName, String tableName)
-    {
-        try {
-            client.deleteTable(databaseName, tableName);
-        }
-        catch (TdApiNotFoundException e) {
-            // ignoreable
-        }
-        catch (IOException e) {
-            throw Throwables.propagate(e);
-        }
     }
 
     @Override
