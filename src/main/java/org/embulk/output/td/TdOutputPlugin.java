@@ -258,7 +258,7 @@ public class TdOutputPlugin
 
             case REPLACE:
                 task.setLoadTargetTableName(
-                        createTemporaryTableWithPrefix(task, client, databaseName, makeTablePrefix(task)));
+                        createTemporaryTableWithPrefix(client, databaseName, makeTablePrefix(task)));
                 break;
             }
 
@@ -293,8 +293,8 @@ public class TdOutputPlugin
             // already done
             break;
         case REPLACE:
-            // swap table
-            swapTable(client, task.getDatabase(), task.getLoadTargetTableName(), task.getTable());
+            // rename table
+            renameTable(client, task.getDatabase(), task.getLoadTargetTableName(), task.getTable());
         }
 
         ConfigDiff configDiff = Exec.newConfigDiff();
@@ -385,7 +385,7 @@ public class TdOutputPlugin
     }
 
     @VisibleForTesting
-    String createTemporaryTableWithPrefix(PluginTask task, TdApiClient client, String databaseName, String tablePrefix)
+    String createTemporaryTableWithPrefix(TdApiClient client, String databaseName, String tablePrefix)
             throws TdApiConflictException
     {
         String tableName = tablePrefix;
@@ -552,9 +552,26 @@ public class TdOutputPlugin
     }
 
     @VisibleForTesting
-    void swapTable(TdApiClient client, String databaseName, String tableName0, String tableName1)
+    void renameTable(TdApiClient client, String databaseName, String oldName, String newName)
     {
-        client.swapTable(databaseName, tableName0, tableName1);
+        log.debug("Renaming table \"{}\".\"{}\" to \"{}\"", databaseName, oldName, newName);
+        try {
+            client.renameTable(databaseName, oldName, newName);
+        }
+        catch (TdApiConflictException e) {
+            try {
+                client.deleteTable(databaseName, newName);
+                log.debug("Deleted original table \"{}\".\"{}\"", databaseName, newName);
+            }
+            catch (TdApiNotFoundException ex) {
+                // ignoreable error
+            }
+            catch (IOException ex) {
+                throw Throwables.propagate(ex);
+            }
+
+            client.renameTable(databaseName, oldName, newName);
+        }
     }
 
     @Override

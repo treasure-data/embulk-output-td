@@ -157,10 +157,10 @@ public class TdApiClient
         ContentResponse response = executeExchange(request);
     }
 
-    public void swapTable(String databaseName, String tableName0, String tableName1)
+    public void renameTable(String databaseName, String oldName, String newName)
     {
         Request request = prepareExchange(HttpMethod.POST,
-                buildUrl("/v3/table/swap", databaseName, tableName0, tableName1));
+                buildUrl("/v3/table/rename", databaseName, oldName, newName));
         ContentResponse response = executeExchange(request);
     }
 
