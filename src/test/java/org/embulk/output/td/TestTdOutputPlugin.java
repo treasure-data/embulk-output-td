@@ -16,6 +16,7 @@ import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
 import org.embulk.config.TaskSource;
+import org.embulk.output.td.TdOutputPlugin.Mode;
 import org.embulk.output.td.TdOutputPlugin.PluginTask;
 import org.embulk.output.td.TdOutputPlugin.TimestampColumnOption;
 import org.embulk.output.td.TdOutputPlugin.UnixTimestampUnit;
@@ -147,6 +148,8 @@ public class TestTdOutputPlugin
     {
         PluginTask task = pluginTask(config);
         task.setSessionName("session_name");
+        task.setMode(Mode.APPEND);
+        task.setOriginalTable("my_table");
         task.setDoUpload(true);
         doReturn(true).when(plugin).startBulkImportSession(any(TdApiClient.class), anyString(), anyString(), anyString());
         doNothing().when(plugin).completeBulkImportSession(any(TdApiClient.class), anyString(), anyInt());
@@ -169,6 +172,8 @@ public class TestTdOutputPlugin
     {
         PluginTask task = pluginTask(config);
         task.setSessionName("session_name");
+        task.setMode(Mode.APPEND);
+        task.setOriginalTable("my_table");
         task.setDoUpload(true);
         TdApiClient client = spy(plugin.newTdApiClient(task));
         doNothing().when(client).deleteBulkImportSession(anyString());
@@ -464,6 +469,8 @@ public class TestTdOutputPlugin
     {
         PluginTask task = pluginTask(config);
         task.setSessionName("session_name");
+        task.setMode(Mode.APPEND);
+        task.setOriginalTable("my_table");
         task.setDoUpload(true);
         Schema schema = schema("time", Types.LONG, "c0", Types.STRING, "c1", Types.STRING);
 
