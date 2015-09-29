@@ -157,6 +157,13 @@ public class TdApiClient
         ContentResponse response = executeExchange(request);
     }
 
+    public void swapTable(String databaseName, String tableName0, String tableName1)
+    {
+        Request request = prepareExchange(HttpMethod.POST,
+                buildUrl("/v3/table/swap", databaseName, tableName0, tableName1));
+        ContentResponse response = executeExchange(request);
+    }
+
     public void createBulkImportSession(String sessionName, String databaseName, String tableName)
     {
         Request request = prepareExchange(HttpMethod.POST,

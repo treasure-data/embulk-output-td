@@ -61,7 +61,12 @@ public class TdOutputPlugin
 
         //  TODO connect_timeout, read_timeout, send_timeout
 
-        //  TODO mode[append, replace]
+        @Config("mode")
+        @ConfigDefault("\"append\"")
+        public String getModeConfig();
+
+        public void setMode(Mode mode);
+        public Mode getMode();
 
         @Config("auto_create_table")
         @ConfigDefault("true")
@@ -72,6 +77,10 @@ public class TdOutputPlugin
 
         @Config("table")
         public String getTable();
+        public void setTable(String name);
+
+        public String getOriginalTable();
+        public void setOriginalTable(String name);
 
         @Config("session")
         @ConfigDefault("null")
@@ -129,6 +138,11 @@ public class TdOutputPlugin
     public interface TimestampColumnOption
             extends Task, TimestampFormatter.TimestampColumnOption
     {}
+
+    public enum Mode
+    {
+        APPEND, REPLACE;
+    }
 
     public interface HttpProxyTask
             extends Task
@@ -197,7 +211,7 @@ public class TdOutputPlugin
     {
         final PluginTask task = config.loadConfig(PluginTask.class);
 
-        // TODO mode check
+        setMode(task);
 
         // check column_options is valid or not
         checkColumnOptions(schema, task.getColumnOptions());
@@ -208,12 +222,18 @@ public class TdOutputPlugin
         try (TdApiClient client = newTdApiClient(task)) {
             String databaseName = task.getDatabase();
             String tableName = task.getTable();
+
             if (task.getAutoCreateTable()) {
                 createTableIfNotExists(client, databaseName, tableName);
             }
             else {
                 // check if the database and/or table exist or not
                 validateTableExists(client, databaseName, tableName);
+            }
+
+            task.setOriginalTable(tableName);
+            if (isReplaceMode(task)) {
+                createTableByPrefix(task, client, databaseName, getTablePrefix(task, tableName));
             }
 
             // validate FieldWriterSet configuration before transaction is started
@@ -241,6 +261,11 @@ public class TdOutputPlugin
         control.run(task.dump());
         completeBulkImportSession(client, task.getSessionName(), 0);  // TODO perform job priority
 
+        if (isReplaceMode(task)) {
+            swapTable(client, task.getDatabase(), task.getTable(), task.getOriginalTable());
+            deleteTableIfExists(client, task.getDatabase(), task.getTable());
+        }
+
         ConfigDiff configDiff = Exec.newConfigDiff();
         configDiff.set("last_session", task.getSessionName());
         return configDiff;
@@ -256,6 +281,31 @@ public class TdOutputPlugin
             log.info("Deleting bulk import session '{}'", sessionName);
             client.deleteBulkImportSession(sessionName);
         }
+    }
+
+    @VisibleForTesting
+    void setMode(PluginTask task)
+    {
+        switch(task.getModeConfig()) {
+            case "append":
+                task.setMode(Mode.APPEND);
+                break;
+            case "replace":
+                task.setMode(Mode.REPLACE);
+                break;
+            default:
+                throw new ConfigException(String.format("Unknown mode '%s'. Supported modes are [append, replace]", task.getModeConfig()));
+        }
+    }
+
+    private boolean isReplaceMode(PluginTask task)
+    {
+        return task.getMode() == Mode.REPLACE;
+    }
+
+    private String getTablePrefix(PluginTask task, String originalTableName)
+    {
+        return originalTableName + "_" + task.getSessionName();
     }
 
     @VisibleForTesting
@@ -320,6 +370,26 @@ public class TdOutputPlugin
         }
         catch (TdApiConflictException e) {
             // ignorable error
+        }
+    }
+
+    @VisibleForTesting
+    void createTableByPrefix(PluginTask task, TdApiClient client, String databaseName, String tablePrefix)
+            throws TdApiConflictException
+    {
+        String tableName = tablePrefix;
+        while (true) {
+            log.debug("Creating temporal table \"{}\".\"{}\"", databaseName, tableName);
+            try {
+                client.createTable(databaseName, tableName);
+                log.debug("Created temporal table \"{}\".\"{}\"", databaseName, tableName);
+                task.setTable(tableName);
+                return;
+            }
+            catch (TdApiConflictException e) {
+                log.debug("\"{}\".\"{}\" table already exists. Renaming temporal table.", databaseName, tableName);
+                tableName += "_";
+            }
         }
     }
 
@@ -468,6 +538,26 @@ public class TdOutputPlugin
             }
             catch (InterruptedException e) {
             }
+        }
+    }
+
+    @VisibleForTesting
+    void swapTable(TdApiClient client, String databaseName, String tableName0, String tableName1)
+    {
+        client.swapTable(databaseName, tableName0, tableName1);
+    }
+
+    @VisibleForTesting
+    void deleteTableIfExists(TdApiClient client, String databaseName, String tableName)
+    {
+        try {
+            client.deleteTable(databaseName, tableName);
+        }
+        catch (TdApiNotFoundException e) {
+            // ignoreable
+        }
+        catch (IOException e) {
+            throw Throwables.propagate(e);
         }
     }
 
