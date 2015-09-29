@@ -6,6 +6,7 @@ import com.google.common.base.Throwables;
 import com.treasuredata.api.TdApiClient;
 import org.embulk.config.CommitReport;
 import org.embulk.output.td.writer.FieldWriter;
+import org.embulk.output.td.writer.IFieldWriter;
 import org.embulk.output.td.writer.FieldWriterSet;
 import org.embulk.spi.Column;
 import org.embulk.spi.ColumnVisitor;
@@ -130,7 +131,7 @@ public class RecordWriter
 
                     private void write(Column column)
                     {
-                        FieldWriter fieldWriter = fieldWriters.getFieldWriter(column.getIndex());
+                        IFieldWriter fieldWriter = fieldWriters.getFieldWriter(column.getIndex());
                         try {
                             fieldWriter.writeKeyValue(builder, pageReader, column);
                         }

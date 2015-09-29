@@ -24,6 +24,7 @@ TODO: Write short description here
 - **tmpdir**: temporal directory
 - **upload_concurrency**: upload concurrency (int, default=2). max concurrency is 8.
 - **file_split_size**: split size (long, default=16384 (16MB)).
+- **default_timestamp_type_convert_to**: configure output type of timestamp columns. Available options are "sec" (convert timestamp to UNIX timestamp in seconds) and "string" (convert timestamp to string). (string, default: `"string"`)
 - **default_timezone**: default timezone (string, default='UTC')
 - **default_timestamp_format**: default timestamp format (string, default=`%Y-%m-%d %H:%M:%S.%6N`)
 - **column_options**: advanced: a key-value pairs where key is a column name and value is options for the column.

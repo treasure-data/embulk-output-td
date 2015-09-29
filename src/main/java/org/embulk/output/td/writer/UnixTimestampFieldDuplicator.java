@@ -7,21 +7,22 @@ import org.embulk.spi.PageReader;
 import java.io.IOException;
 
 public class UnixTimestampFieldDuplicator
-        extends LongFieldWriter
+        implements IFieldWriter
 {
+    private final IFieldWriter nextWriter;
     private final UnixTimestampLongFieldWriter timeFieldWriter;
 
-    public UnixTimestampFieldDuplicator(String keyName, String duplicateKeyName, int fractionUnit)
+    public UnixTimestampFieldDuplicator(IFieldWriter nextWriter, String duplicateKeyName, int fractionUnit)
     {
-        super(keyName);
+        this.nextWriter = nextWriter;
         timeFieldWriter = new UnixTimestampLongFieldWriter(duplicateKeyName, fractionUnit);
     }
 
     @Override
-    public void writeValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
+    public void writeKeyValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
             throws IOException
     {
-        super.writeValue(builder, reader, column);
+        nextWriter.writeKeyValue(builder, reader, column);
         timeFieldWriter.writeKeyValue(builder, reader, column);
     }
 }
