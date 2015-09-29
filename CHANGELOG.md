@@ -1,3 +1,7 @@
+## 0.1.5 - 2015-09-29
+
+* [new feature] Add replace mode [#17](https://github.com/treasure-data/embulk-output-td/pull/17)
+
 ## 0.1.4 - 2015-08-17
 
 * [maintenance] Upgrade Embulk v0.6.25
