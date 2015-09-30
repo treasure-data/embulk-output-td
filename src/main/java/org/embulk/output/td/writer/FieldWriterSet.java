@@ -25,17 +25,18 @@ public class FieldWriterSet
     }
 
     private final int fieldCount;
-    private final FieldWriter[] fieldWriters;
+    private final IFieldWriter[] fieldWriters;
 
     public FieldWriterSet(Logger log, TdOutputPlugin.PluginTask task, Schema schema)
     {
         Optional<String> userDefinedPrimaryKeySourceColumnName = task.getTimeColumn();
+        TdOutputPlugin.ConvertTimestampType convertTimestamp = task.getConvertTimestampType();
         boolean hasPkWriter = false;
         int duplicatePrimaryKeySourceIndex = -1;
         int firstTimestampColumnIndex = -1;
 
         int fc = 0;
-        fieldWriters = new FieldWriter[schema.size()];
+        fieldWriters = new IFieldWriter[schema.size()];
         TimestampFormatter[] timestampFormatters = Timestamps.newTimestampColumnFormatters(task, schema, task.getColumnOptions());
 
         for (int i = 0; i < schema.size(); i++) {
@@ -109,7 +110,17 @@ public class FieldWriterSet
                         writer = new StringFieldWriter(columnName);
                     }
                     else if (columnType instanceof TimestampType) {
-                        writer = new TimestampStringFieldWriter(timestampFormatters[i], columnName);
+                        switch (convertTimestamp) {
+                        case STRING:
+                            writer = new TimestampStringFieldWriter(timestampFormatters[i], columnName);
+                            break;
+                        case SEC:
+                            writer = new TimestampLongFieldWriter(columnName);
+                            break;
+                        default:
+                            // Thread of control doesn't come here but, just in case, it throws ConfigException.
+                            throw new ConfigException(String.format("Unknown option {} as convert_timestamp_type", convertTimestamp));
+                        }
                         if (firstTimestampColumnIndex < 0) {
                             firstTimestampColumnIndex = i;
                         }
@@ -150,16 +161,29 @@ public class FieldWriterSet
             String columnName = schema.getColumnName(duplicatePrimaryKeySourceIndex);
             Type columnType = schema.getColumnType(duplicatePrimaryKeySourceIndex);
 
-            FieldWriter writer;
+            IFieldWriter writer;
             if (columnType instanceof LongType) {
                 log.info("Duplicating {}:{} column (unix timestamp {}) to 'time' column as seconds for the data partitioning",
                         columnName, columnType, task.getUnixTimestampUnit());
-                writer = new UnixTimestampFieldDuplicator(columnName, "time", task.getUnixTimestampUnit().getFractionUnit());
+                IFieldWriter fw = new LongFieldWriter(columnName);
+                writer = new UnixTimestampFieldDuplicator(fw, "time", task.getUnixTimestampUnit().getFractionUnit());
             }
             else if (columnType instanceof TimestampType) {
                 log.info("Duplicating {}:{} column to 'time' column as seconds for the data partitioning",
                         columnName, columnType);
-                writer = new TimestampFieldLongDuplicator(timestampFormatters[duplicatePrimaryKeySourceIndex], columnName, "time");
+                IFieldWriter fw;
+                switch (convertTimestamp) {
+                    case STRING:
+                        fw = new TimestampStringFieldWriter(timestampFormatters[duplicatePrimaryKeySourceIndex], columnName);
+                        break;
+                    case SEC:
+                        fw = new TimestampLongFieldWriter(columnName);
+                        break;
+                    default:
+                        // Thread of control doesn't come here but, just in case, it throws ConfigException.
+                        throw new ConfigException(String.format("Unknown option {} as convert_timestamp_type", convertTimestamp));
+                }
+                writer = new TimestampFieldLongDuplicator(fw, "time");
             }
             else {
                 throw new ConfigException(String.format("Type of '%s' column must be long or timestamp but got %s",
@@ -194,7 +218,7 @@ public class FieldWriterSet
         return false;
     }
 
-    public FieldWriter getFieldWriter(int index)
+    public IFieldWriter getFieldWriter(int index)
     {
         return fieldWriters[index];
     }

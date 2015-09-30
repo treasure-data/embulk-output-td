@@ -82,6 +82,10 @@ public class TdOutputPlugin
         @ConfigDefault("null")
         public Optional<String> getSession();
 
+        @Config("default_timestamp_type_convert_to")
+        @ConfigDefault("\"string\"")
+        public ConvertTimestampType getConvertTimestampType();
+
         @Config("time_column")
         @ConfigDefault("null")
         public Optional<String> getTimeColumn();
@@ -178,6 +182,51 @@ public class TdOutputPlugin
         @Config("use_ssl")
         @ConfigDefault("false")
         public boolean getUseSsl();
+    }
+
+    public static enum ConvertTimestampType
+    {
+        STRING(-1),
+        //SEC_DOUBLE(-1),  // TODO
+        SEC(1);
+        //MILLI(1000),  // TODO
+        //MICRO(1000000),  // TODO
+        //NANO(1000000000);  // TODO
+
+        private final int unit;
+
+        private ConvertTimestampType(int unit)
+        {
+            this.unit = unit;
+        }
+
+        public int getFractionUnit()
+        {
+            return unit;
+        }
+
+        @JsonCreator
+        public static ConvertTimestampType of(String s)
+        {
+            switch (s) {
+            case "string": return STRING;
+            //case "sec_double": return SEC_DOUBLE;
+            case "sec": return SEC;
+            //case "milli": return MILLI;
+            //case "micro": return MICRO;
+            //case "nano": return NANO;
+            default:
+                throw new ConfigException(
+                        String.format("Unknown convert_timestamp_type '%s'. Supported units are string, sec, milli, micro, nano, and sec_double", s));
+            }
+        }
+
+        @JsonValue
+        @Override
+        public String toString()
+        {
+            return name().toLowerCase();
+        }
     }
 
     public static enum UnixTimestampUnit

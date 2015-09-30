@@ -135,6 +135,58 @@ public class TestFieldWriterSet
     }
 
     @Test
+    public void useDefaultTimestampTypeConvertTo()
+    {
+        { // if not specify default_timestamp_type_convert_to, use string by default
+            Schema schema = schema("_c0", Types.TIMESTAMP, "time", Types.TIMESTAMP);
+            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config.deepCopy()), schema);
+
+            assertTrue(writers.getFieldWriter(0) instanceof TimestampStringFieldWriter); // c0
+            assertTrue(writers.getFieldWriter(1) instanceof TimestampLongFieldWriter); // time
+        }
+
+        { // and use time_column option
+            Schema schema = schema("_c0", Types.TIMESTAMP, "time", Types.TIMESTAMP);
+            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config.deepCopy().set("time_column", "_c0")), schema);
+
+            assertTrue(writers.getFieldWriter(0) instanceof TimestampFieldLongDuplicator); // c0
+            assertTrue(writers.getFieldWriter(1) instanceof TimestampStringFieldWriter); // time renamed
+        }
+
+        { // if default_timestamp_type_convert_to is string, use string
+            Schema schema = schema("_c0", Types.TIMESTAMP, "time", Types.TIMESTAMP);
+            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config.deepCopy().set("default_timestamp_type_convert_to", "string")), schema);
+
+            assertTrue(writers.getFieldWriter(0) instanceof TimestampStringFieldWriter); // c0
+            assertTrue(writers.getFieldWriter(1) instanceof TimestampLongFieldWriter); // time
+        }
+
+        { // and use time_column option
+            Schema schema = schema("_c0", Types.TIMESTAMP, "time", Types.TIMESTAMP);
+            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config.deepCopy().set("default_timestamp_type_convert_to", "string").set("time_column", "_c0")), schema);
+
+            assertTrue(writers.getFieldWriter(0) instanceof TimestampFieldLongDuplicator); // c0
+            assertTrue(writers.getFieldWriter(1) instanceof TimestampStringFieldWriter); // time renamed
+        }
+
+        { // if default_timestamp_type_conver_to is sec, use long
+            Schema schema = schema("_c0", Types.TIMESTAMP, "time", Types.TIMESTAMP);
+            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config.deepCopy().set("default_timestamp_type_convert_to", "sec")), schema);
+
+            assertTrue(writers.getFieldWriter(0) instanceof TimestampLongFieldWriter); // c0
+            assertTrue(writers.getFieldWriter(1) instanceof TimestampLongFieldWriter); // time
+        }
+
+        { // and use time_column option
+            Schema schema = schema("_c0", Types.TIMESTAMP, "time", Types.TIMESTAMP);
+            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config.deepCopy().set("default_timestamp_type_convert_to", "sec").set("time_column", "_c0")), schema);
+
+            assertTrue(writers.getFieldWriter(0) instanceof TimestampFieldLongDuplicator); // c0
+            assertTrue(writers.getFieldWriter(1) instanceof TimestampLongFieldWriter); // time renamed
+        }
+    }
+
+    @Test
     public void useFirstTimestampColumn()
             throws Exception
     {

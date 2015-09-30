@@ -7,6 +7,7 @@ import org.embulk.spi.PageReader;
 import java.io.IOException;
 
 public abstract class FieldWriter
+        implements IFieldWriter
 {
     private final String keyName;
 

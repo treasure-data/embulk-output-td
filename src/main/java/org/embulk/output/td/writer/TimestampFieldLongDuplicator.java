@@ -8,21 +8,21 @@ import org.embulk.spi.time.TimestampFormatter;
 import java.io.IOException;
 
 public class TimestampFieldLongDuplicator
-        extends TimestampStringFieldWriter
+        implements IFieldWriter
 {
+    private final IFieldWriter nextWriter;
     private final TimestampLongFieldWriter timeFieldWriter;
 
-    public TimestampFieldLongDuplicator(TimestampFormatter formatter, String keyName, String longDuplicateKeyName)
+    public TimestampFieldLongDuplicator(IFieldWriter nextWriter, String duplicateKeyName)
     {
-        super(formatter, keyName);
-        timeFieldWriter = new TimestampLongFieldWriter(longDuplicateKeyName);
+        this.nextWriter = nextWriter;
+        timeFieldWriter = new TimestampLongFieldWriter(duplicateKeyName);
     }
 
-    @Override
-    public void writeValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
+    public void writeKeyValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
             throws IOException
     {
-        super.writeValue(builder, reader, column);
+        nextWriter.writeKeyValue(builder, reader, column);
         timeFieldWriter.writeKeyValue(builder, reader, column);
     }
 }
