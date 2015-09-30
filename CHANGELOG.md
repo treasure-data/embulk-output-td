@@ -1,3 +1,7 @@
+## 0.1.6 - 2015-XX-XX
+
+* [new feature] Add default_timestamp_type_convert_to option [#18](https://github.com/treasure-data/embulk-output-td/pull/18)
+
 ## 0.1.5 - 2015-09-29
 
 * [new feature] Add replace mode [#17](https://github.com/treasure-data/embulk-output-td/pull/17)
