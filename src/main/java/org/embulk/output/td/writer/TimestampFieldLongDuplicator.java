@@ -19,7 +19,6 @@ public class TimestampFieldLongDuplicator
         timeFieldWriter = new TimestampLongFieldWriter(duplicateKeyName);
     }
 
-    @Override
     public void writeKeyValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
             throws IOException
     {

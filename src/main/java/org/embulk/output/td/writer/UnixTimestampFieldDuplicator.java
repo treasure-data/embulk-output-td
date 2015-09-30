@@ -18,7 +18,6 @@ public class UnixTimestampFieldDuplicator
         timeFieldWriter = new UnixTimestampLongFieldWriter(duplicateKeyName, fractionUnit);
     }
 
-    @Override
     public void writeKeyValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
             throws IOException
     {
