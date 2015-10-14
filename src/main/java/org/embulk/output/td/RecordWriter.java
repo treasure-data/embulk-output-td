@@ -4,7 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Throwables;
 import com.treasuredata.api.TdApiClient;
-import org.embulk.config.CommitReport;
+import org.embulk.config.TaskReport;
 import org.embulk.output.td.writer.FieldWriter;
 import org.embulk.output.td.writer.IFieldWriter;
 import org.embulk.output.td.writer.FieldWriterSet;
@@ -247,9 +247,9 @@ public class RecordWriter
     }
 
     @Override
-    public CommitReport commit()
+    public TaskReport commit()
     {
-        CommitReport report = Exec.newCommitReport();
+        TaskReport report = Exec.newTaskReport();
         //  TODO
         return report;
     }
