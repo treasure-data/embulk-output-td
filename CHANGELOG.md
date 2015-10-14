@@ -1,5 +1,6 @@
 ## 0.1.6 - 2015-XX-XX
 
+* [maintenance] Upgrade Embulk v0.7.5 [#21](https://github.com/treasure-data/embulk-output-td/pull/21)
 * [new feature] Add default_timestamp_type_convert_to option [#18](https://github.com/treasure-data/embulk-output-td/pull/18)
 
 ## 0.1.5 - 2015-09-29
