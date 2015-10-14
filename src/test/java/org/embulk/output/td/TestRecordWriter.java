@@ -191,7 +191,7 @@ public class TestRecordWriter
     }
 
     @Test
-    public void checkCommitReport()
+    public void checkTaskReport()
     {
         assertTrue(recordWriter.commit().isEmpty());
     }

@@ -11,7 +11,7 @@ import com.treasuredata.api.model.TDBulkImportSession.ImportStatus;
 import com.treasuredata.api.model.TDTable;
 import com.treasuredata.api.model.TDTableType;
 import org.embulk.EmbulkTestRuntime;
-import org.embulk.config.CommitReport;
+import org.embulk.config.TaskReport;
 import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
@@ -121,9 +121,9 @@ public class TestTdOutputPlugin
             assertEquals("session_name", plugin.transaction(config, schema, 0, new OutputPlugin.Control()
             {
                 @Override
-                public List<CommitReport> run(TaskSource taskSource)
+                public List<TaskReport> run(TaskSource taskSource)
                 {
-                    return Lists.newArrayList(Exec.newCommitReport());
+                    return Lists.newArrayList(Exec.newTaskReport());
                 }
             }).get(String.class, "last_session"));
         }
@@ -134,9 +134,9 @@ public class TestTdOutputPlugin
             assertEquals("session_name", plugin.transaction(config, schema, 0, new OutputPlugin.Control()
             {
                 @Override
-                public List<CommitReport> run(TaskSource taskSource)
+                public List<TaskReport> run(TaskSource taskSource)
                 {
-                    return Lists.newArrayList(Exec.newCommitReport());
+                    return Lists.newArrayList(Exec.newTaskReport());
                 }
             }).get(String.class, "last_session"));
         }
@@ -157,9 +157,9 @@ public class TestTdOutputPlugin
         ConfigDiff configDiff = plugin.resume(task.dump(), schema, 0, new OutputPlugin.Control()
         {
             @Override
-            public List<CommitReport> run(TaskSource taskSource)
+            public List<TaskReport> run(TaskSource taskSource)
             {
-                return Lists.newArrayList(Exec.newCommitReport());
+                return Lists.newArrayList(Exec.newTaskReport());
             }
         });
 
@@ -178,7 +178,7 @@ public class TestTdOutputPlugin
         doReturn(client).when(plugin).newTdApiClient(task);
         Schema schema = schema("time", Types.LONG, "c0", Types.STRING, "c1", Types.STRING);
 
-        plugin.cleanup(task.dump(), schema, 0, Lists.newArrayList(Exec.newCommitReport()));
+        plugin.cleanup(task.dump(), schema, 0, Lists.newArrayList(Exec.newTaskReport()));
         // no error happens
     }
 

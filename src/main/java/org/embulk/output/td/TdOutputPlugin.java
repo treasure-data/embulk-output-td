@@ -19,7 +19,7 @@ import com.treasuredata.api.TdApiNotFoundException;
 import com.treasuredata.api.model.TDBulkImportSession;
 import com.treasuredata.api.model.TDBulkImportSession.ImportStatus;
 import com.treasuredata.api.model.TDTable;
-import org.embulk.config.CommitReport;
+import org.embulk.config.TaskReport;
 import org.embulk.config.Config;
 import org.embulk.config.ConfigDefault;
 import org.embulk.config.ConfigDiff;
@@ -353,7 +353,7 @@ public class TdOutputPlugin
 
     public void cleanup(TaskSource taskSource,
             Schema schema, int processorCount,
-            List<CommitReport> successCommitReports)
+            List<TaskReport> successTaskReports)
     {
         PluginTask task = taskSource.loadTask(PluginTask.class);
         try (TdApiClient client = newTdApiClient(task)) {
