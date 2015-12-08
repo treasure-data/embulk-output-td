@@ -1,4 +1,4 @@
-## 0.1.6 - 2015-XX-XX
+## 0.1.6 - 2015-12-08
 
 * [maintenance] Upgrade Embulk v0.7.10 [#22](https://github.com/treasure-data/embulk-output-td/pull/22)
 * [maintenance] Upgrade Embulk v0.7.5 [#21](https://github.com/treasure-data/embulk-output-td/pull/21)
