@@ -157,10 +157,12 @@ public class TdApiClient
         ContentResponse response = executeExchange(request);
     }
 
-    public void renameTable(String databaseName, String oldName, String newName)
+    public void renameTable(String databaseName, String oldName, String newName, boolean overwrite)
     {
         Request request = prepareExchange(HttpMethod.POST,
-                buildUrl("/v3/table/rename", databaseName, oldName, newName));
+                buildUrl("/v3/table/rename", databaseName, oldName, newName),
+                ImmutableMap.<String, String>of(),
+                ImmutableMap.of("overwrite", Boolean.toString(overwrite)));
         ContentResponse response = executeExchange(request);
     }
 
