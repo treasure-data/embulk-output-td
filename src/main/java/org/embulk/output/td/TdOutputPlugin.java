@@ -604,23 +604,7 @@ public class TdOutputPlugin
     void renameTable(TdApiClient client, String databaseName, String oldName, String newName)
     {
         log.debug("Renaming table \"{}\".\"{}\" to \"{}\"", databaseName, oldName, newName);
-        try {
-            client.renameTable(databaseName, oldName, newName);
-        }
-        catch (TdApiConflictException e) {
-            try {
-                client.deleteTable(databaseName, newName);
-                log.debug("Deleted original table \"{}\".\"{}\"", databaseName, newName);
-            }
-            catch (TdApiNotFoundException ex) {
-                // ignoreable error
-            }
-            catch (IOException ex) {
-                throw Throwables.propagate(ex);
-            }
-
-            client.renameTable(databaseName, oldName, newName);
-        }
+        client.renameTable(databaseName, oldName, newName, true);
     }
 
     @Override
