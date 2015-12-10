@@ -43,6 +43,12 @@ out:
   time_column: created_at
 ```
 
+## Install
+
+```
+$ embulk gem install embulk-output-td
+```
+
 ### Http Proxy Configuration
 If you want to add your Http Proxy configuration, you can use `http_proxy` parameter:
 ```yaml
