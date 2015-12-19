@@ -8,6 +8,7 @@ import com.treasuredata.api.TdApiConflictException;
 import com.treasuredata.api.TdApiNotFoundException;
 import com.treasuredata.api.model.TDBulkImportSession;
 import com.treasuredata.api.model.TDBulkImportSession.ImportStatus;
+import com.treasuredata.api.model.TDColumnType;
 import com.treasuredata.api.model.TDTable;
 import com.treasuredata.api.model.TDTableType;
 import org.embulk.EmbulkTestRuntime;
@@ -34,6 +35,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 
+import java.util.HashMap;
 import java.util.List;
 
 import static com.treasuredata.api.model.TDBulkImportSession.ImportStatus.COMMITTED;
@@ -112,7 +114,7 @@ public class TestTdOutputPlugin
     {
         doReturn("session_name").when(plugin).buildBulkImportSessionName(any(PluginTask.class), any(ExecSession.class));
         ConfigDiff configDiff = Exec.newConfigDiff().set("last_session", "session_name");
-        doReturn(configDiff).when(plugin).doRun(any(TdApiClient.class), any(PluginTask.class), any(OutputPlugin.Control.class));
+        doReturn(configDiff).when(plugin).doRun(any(TdApiClient.class), any(Schema.class), any(PluginTask.class), any(OutputPlugin.Control.class));
         Schema schema = schema("time", Types.LONG, "c0", Types.STRING, "c1", Types.STRING);
 
         { // auto_create_table is true
@@ -151,7 +153,7 @@ public class TestTdOutputPlugin
         task.setLoadTargetTableName("my_table");
         task.setDoUpload(true);
         doReturn(true).when(plugin).startBulkImportSession(any(TdApiClient.class), anyString(), anyString(), anyString());
-        doNothing().when(plugin).completeBulkImportSession(any(TdApiClient.class), anyString(), anyInt());
+        doNothing().when(plugin).completeBulkImportSession(any(TdApiClient.class), any(Schema.class), any(PluginTask.class), anyInt());
         Schema schema = schema("time", Types.LONG, "c0", Types.STRING, "c1", Types.STRING);
 
         ConfigDiff configDiff = plugin.resume(task.dump(), schema, 0, new OutputPlugin.Control()
@@ -384,7 +386,10 @@ public class TestTdOutputPlugin
     public void completeBulkImportSession()
     {
         PluginTask task = pluginTask(config);
+        Schema schema = schema("c0", Types.LONG);
+
         doReturn(session(UNKNOWN, false)).when(plugin).waitForStatusChange(any(TdApiClient.class), anyString(), any(ImportStatus.class), any(ImportStatus.class), anyString());
+        doReturn(new HashMap<String, TDColumnType>()).when(plugin).updateSchema(any(TdApiClient.class), any(Schema.class), any(PluginTask.class));
 
         TdApiClient client = spy(plugin.newTdApiClient(task));
         doNothing().when(client).freezeBulkImportSession(anyString());
@@ -392,45 +397,45 @@ public class TestTdOutputPlugin
         doNothing().when(client).commitBulkImportSession(anyString());
 
         { // uploading + unfreeze
-            doReturn(session(UPLOADING, false)).when(client).getBulkImportSession("my_session");
-            plugin.completeBulkImportSession(client, "my_session", 0);
+            doReturn(session(UPLOADING, false)).when(client).getBulkImportSession(anyString());
+            plugin.completeBulkImportSession(client, schema, task, 0);
             // no error happens
         }
 
         { // uploading + frozen
-            doReturn(session(UPLOADING, true)).when(client).getBulkImportSession("my_session");
-            plugin.completeBulkImportSession(client, "my_session", 0);
+            doReturn(session(UPLOADING, true)).when(client).getBulkImportSession(anyString());
+            plugin.completeBulkImportSession(client, schema, task, 0);
             // no error happens
         }
 
         { // performing
             doReturn(session(PERFORMING, false)).when(client).getBulkImportSession(anyString());
-            plugin.completeBulkImportSession(client, "my_session", 0);
+            plugin.completeBulkImportSession(client, schema, task, 0);
             // no error happens
         }
 
         { // ready
             doReturn(session(READY, false)).when(client).getBulkImportSession(anyString());
-            plugin.completeBulkImportSession(client, "my_session", 0);
+            plugin.completeBulkImportSession(client, schema, task, 0);
             // no error happens
         }
 
         { // committing
             doReturn(session(COMMITTING, false)).when(client).getBulkImportSession(anyString());
-            plugin.completeBulkImportSession(client, "my_session", 0);
+            plugin.completeBulkImportSession(client, schema, task, 0);
             // no error happens
         }
 
         { // committed
             doReturn(session(COMMITTED, false)).when(client).getBulkImportSession(anyString());
-            plugin.completeBulkImportSession(client, "my_session", 0);
+            plugin.completeBulkImportSession(client, schema, task, 0);
             // no error happens
         }
 
         { // unknown
             doReturn(session(UNKNOWN, false)).when(client).getBulkImportSession(anyString());
             try {
-                plugin.completeBulkImportSession(client, "my_session", 0);
+                plugin.completeBulkImportSession(client, schema, task, 0);
                 fail();
             }
             catch (Throwable t) {
@@ -439,8 +444,8 @@ public class TestTdOutputPlugin
 
         { // if freezeBulkImportSession got 409, it can be ignoreable.
             doThrow(conflict()).when(client).freezeBulkImportSession(anyString());
-            doReturn(session(UPLOADING, true)).when(client).getBulkImportSession("my_session");
-            plugin.completeBulkImportSession(client, "my_session", 0);
+            doReturn(session(UPLOADING, true)).when(client).getBulkImportSession(anyString());
+            plugin.completeBulkImportSession(client, schema, task, 0);
             // no error happens
         }
     }
