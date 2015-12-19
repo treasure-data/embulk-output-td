@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import com.treasuredata.api.model.TDBulkImportSession;
+import com.treasuredata.api.model.TDColumn;
 import com.treasuredata.api.model.TDDatabase;
 import com.treasuredata.api.model.TDDatabaseList;
 import com.treasuredata.api.model.TDTable;
@@ -163,6 +164,15 @@ public class TdApiClient
                 buildUrl("/v3/table/rename", databaseName, oldName, newName),
                 ImmutableMap.<String, String>of(),
                 ImmutableMap.of("overwrite", Boolean.toString(overwrite)));
+        ContentResponse response = executeExchange(request);
+    }
+
+    public void updateSchema(String databaseName, String tableName, List<TDColumn> newSchema)
+    {
+        Request request = prepareExchange(HttpMethod.POST,
+                buildUrl("/v3/table/update-schema", databaseName, tableName),
+                ImmutableMap.<String, String>of(),
+                ImmutableMap.of("schema", formatRequestParameterObject(newSchema)));
         ContentResponse response = executeExchange(request);
     }
 

@@ -16,11 +16,11 @@ public class TDTable
     public TDTable(
             @JsonProperty("name") String name,
             @JsonProperty("type") TDTableType type,
-            @JsonProperty("columns") List<TDColumn> columns)
+            @JsonProperty("schema") String schema)
     {
         this.name = name;
         this.type = type;
-        this.columns = columns;
+        this.columns = TDColumn.parseTuple(schema);
     }
 
     @JsonProperty

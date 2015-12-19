@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
+
 import javax.validation.constraints.Min;
 import javax.validation.constraints.Max;
 
@@ -26,7 +28,6 @@ import com.treasuredata.api.model.TDColumn;
 import com.treasuredata.api.model.TDColumnType;
 import com.treasuredata.api.model.TDPrimitiveColumnType;
 import org.embulk.config.TaskReport;
-import org.embulk.config.CommitReport;
 import org.embulk.config.Config;
 import org.embulk.config.ConfigDefault;
 import org.embulk.config.ConfigDiff;
@@ -343,7 +344,7 @@ public class TdOutputPlugin
         boolean doUpload = startBulkImportSession(client, task.getSessionName(), task.getDatabase(), task.getLoadTargetTableName());
         task.setDoUpload(doUpload);
         control.run(task.dump());
-        completeBulkImportSession(client, schema, task.getDatabase(), task.getTable(), task.getSessionName(), 0);  // TODO perform job priority
+        completeBulkImportSession(client, schema, task, 0);  // TODO perform job priority
 
         // commit
         switch (task.getMode()) {
@@ -528,8 +529,9 @@ public class TdOutputPlugin
     }
 
     @VisibleForTesting
-    void completeBulkImportSession(TdApiClient client, Schema schema, String databaseName, String tableName, String sessionName, int priority)
+    void completeBulkImportSession(TdApiClient client, Schema schema, PluginTask task, int priority)
     {
+        String sessionName = task.getSessionName();
         TDBulkImportSession session = client.getBulkImportSession(sessionName);
 
         switch (session.getStatus()) {
@@ -557,17 +559,22 @@ public class TdOutputPlugin
             // pass
         case READY:
             // TODO add an option to make the transaction failed if error_records or error_parts is too large
-            // commit
-            Map<String, TDColumnType> newColumns = updateSchema(client, schema, databaseName, tableName);
+
+            // add Embulk's columns to the table schema
+            Map<String, TDColumnType> newColumns = updateSchema(client, schema, task);
             log.info("Committing bulk import session '{}'", sessionName);
             log.info("    valid records: {}", session.getValidRecords());
             log.info("    error records: {}", session.getErrorRecords());
             log.info("    valid parts: {}", session.getValidParts());
             log.info("    error parts: {}", session.getErrorParts());
-            log.info("    new columns:");
-            for (Map.Entry<String, TDColumnType> pair : newColumns.entrySet()) {
-                log.info("      - {}:{}", pair.getKey(), pair.getValue());
+            if (!newColumns.isEmpty()) {
+                log.info("    new columns:");
             }
+            for (Map.Entry<String, TDColumnType> pair : newColumns.entrySet()) {
+                log.info("      - {}: {}", pair.getKey(), pair.getValue());
+            }
+
+            // commit
             client.commitBulkImportSession(sessionName);
 
             // pass
@@ -585,9 +592,11 @@ public class TdOutputPlugin
         }
     }
 
-    Map<String, TDColumnType> updateSchema(TdApiClient client, Schema inputSchema, String databaseName, String tableName)
+    Map<String, TDColumnType> updateSchema(TdApiClient client, Schema inputSchema, PluginTask task)
     {
-        TDTable table = findTable(client, databaseName, tableName);
+        String databaseName = task.getDatabase();
+
+        TDTable table = findTable(client, databaseName, task.getTable());
         if (table == null) {
             return new HashMap<>();
         }
@@ -596,7 +605,7 @@ public class TdOutputPlugin
         inputSchema.visitColumns(new ColumnVisitor() {
             public void booleanColumn(Column column)
             {
-                guessedSchema.put(column.getName(), TDPrimitiveColumnType.BOOLEAN);
+                guessedSchema.put(column.getName(), TDPrimitiveColumnType.LONG);
             }
 
             public void longColumn(Column column)
@@ -620,22 +629,33 @@ public class TdOutputPlugin
             }
         });
 
-        // don't change type of existent columns
+        Map<String, Integer> usedNames = new HashMap<>();
         for (TDColumn existent : table.getColumns()) {
-            guessedSchema.remove(existent.getName());
+            usedNames.put(new String(existent.getKey()), 1);
+            guessedSchema.remove(existent.getName()); // don't change type of existent columns
         }
-        guessedSchema.remove("time");
+        guessedSchema.remove("time"); // don't change type of 'time' column
 
         List<TDColumn> newSchema = new ArrayList<>(table.getColumns());
         for (Map.Entry<String, TDColumnType> pair : guessedSchema.entrySet()) {
-            String columnName = pair.getKey();  here needs to convert invalid column names to valid sql-friendly name
-            newSchema.add(new TDColumn(columnName, pair.getValue(), pair.getKey().getBytes(StandardCharsets.UTF_8)));
+            String key = renameColumn(pair.getKey());
+
+            if (!usedNames.containsKey(key)) {
+                usedNames.put(key, 1);
+            } else {
+                int next = usedNames.get(key);
+                key = key + "_" + next;
+                usedNames.put(key, next + 1);
+            }
+
+            newSchema.add(new TDColumn(pair.getKey(), pair.getValue(), key.getBytes(StandardCharsets.UTF_8)));
         }
 
-        client.updateSchema(databaseName, tableName, newSchema);
+        client.updateSchema(databaseName, task.getLoadTargetTableName(), newSchema);
+        return guessedSchema;
     }
 
-    private TDTable findTable(TdApiClient client, String databaseName, String tableName)
+    private static TDTable findTable(TdApiClient client, String databaseName, String tableName)
     {
         for (TDTable table : client.getTables(databaseName)) {
             if (table.getName().equals(tableName)) {
@@ -643,6 +663,17 @@ public class TdOutputPlugin
             }
         }
         return null;
+    }
+
+    private static final Pattern COLUMN_NAME_PATTERN = Pattern.compile("\\A[a-z_][a-z0-9_]*\\z");
+    private static final Pattern COLUMN_NAME_SQUASH_PATTERN = Pattern.compile("(?:[^a-zA-Z0-9_]|(?:\\A[^a-zA-Z_]))+");
+
+    private static String renameColumn(String origName)
+    {
+        if (COLUMN_NAME_PATTERN.matcher(origName).matches()) {
+            return origName;
+        }
+        return COLUMN_NAME_SQUASH_PATTERN.matcher(origName).replaceAll("_").toLowerCase();
     }
 
     @VisibleForTesting
