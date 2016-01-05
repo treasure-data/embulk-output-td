@@ -1,3 +1,8 @@
+## 0.1.7 - 20XX-XX-XX
+
+* [new feature] Merge exact column types into the table schema [#25](https://github.com/treasure-data/embulk-output-td/pull/25)
+* [maintenance] Use rename endpoint with 'overwrite' parameter [#23](https://github.com/treasure-data/embulk-output-td/pull/23)
+
 ## 0.1.6 - 2015-12-08
 
 * [maintenance] Upgrade Embulk v0.7.10 [#22](https://github.com/treasure-data/embulk-output-td/pull/22)
