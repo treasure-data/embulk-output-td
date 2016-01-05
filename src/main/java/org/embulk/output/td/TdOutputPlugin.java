@@ -2,7 +2,12 @@ package org.embulk.output.td;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
+import java.util.HashMap;
+import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
+
 import javax.validation.constraints.Min;
 import javax.validation.constraints.Max;
 
@@ -19,6 +24,9 @@ import com.treasuredata.api.TdApiNotFoundException;
 import com.treasuredata.api.model.TDBulkImportSession;
 import com.treasuredata.api.model.TDBulkImportSession.ImportStatus;
 import com.treasuredata.api.model.TDTable;
+import com.treasuredata.api.model.TDColumn;
+import com.treasuredata.api.model.TDColumnType;
+import com.treasuredata.api.model.TDPrimitiveColumnType;
 import org.embulk.config.TaskReport;
 import org.embulk.config.Config;
 import org.embulk.config.ConfigDefault;
@@ -29,9 +37,11 @@ import org.embulk.config.Task;
 import org.embulk.config.TaskSource;
 import org.embulk.output.td.writer.FieldWriterSet;
 import org.embulk.spi.Exec;
+import org.embulk.spi.ColumnVisitor;
 import org.embulk.spi.ExecSession;
 import org.embulk.spi.OutputPlugin;
 import org.embulk.spi.Schema;
+import org.embulk.spi.Column;
 import org.embulk.spi.TransactionalPageOutput;
 import org.embulk.spi.time.Timestamp;
 import org.embulk.spi.time.TimestampFormatter;
@@ -314,7 +324,7 @@ public class TdOutputPlugin
             // validate FieldWriterSet configuration before transaction is started
             RecordWriter.validateSchema(log, task, schema);
 
-            return doRun(client, task, control);
+            return doRun(client, schema, task, control);
         }
     }
 
@@ -324,17 +334,17 @@ public class TdOutputPlugin
     {
         PluginTask task = taskSource.loadTask(PluginTask.class);
         try (TdApiClient client = newTdApiClient(task)) {
-            return doRun(client, task, control);
+            return doRun(client, schema, task, control);
         }
     }
 
     @VisibleForTesting
-    ConfigDiff doRun(TdApiClient client, PluginTask task, OutputPlugin.Control control)
+    ConfigDiff doRun(TdApiClient client, Schema schema, PluginTask task, OutputPlugin.Control control)
     {
         boolean doUpload = startBulkImportSession(client, task.getSessionName(), task.getDatabase(), task.getLoadTargetTableName());
         task.setDoUpload(doUpload);
         control.run(task.dump());
-        completeBulkImportSession(client, task.getSessionName(), 0);  // TODO perform job priority
+        completeBulkImportSession(client, schema, task, 0);  // TODO perform job priority
 
         // commit
         switch (task.getMode()) {
@@ -519,8 +529,9 @@ public class TdOutputPlugin
     }
 
     @VisibleForTesting
-    void completeBulkImportSession(TdApiClient client, String sessionName, int priority)
+    void completeBulkImportSession(TdApiClient client, Schema schema, PluginTask task, int priority)
     {
+        String sessionName = task.getSessionName();
         TDBulkImportSession session = client.getBulkImportSession(sessionName);
 
         switch (session.getStatus()) {
@@ -548,12 +559,22 @@ public class TdOutputPlugin
             // pass
         case READY:
             // TODO add an option to make the transaction failed if error_records or error_parts is too large
-            // commit
+
+            // add Embulk's columns to the table schema
+            Map<String, TDColumnType> newColumns = updateSchema(client, schema, task);
             log.info("Committing bulk import session '{}'", sessionName);
             log.info("    valid records: {}", session.getValidRecords());
             log.info("    error records: {}", session.getErrorRecords());
             log.info("    valid parts: {}", session.getValidParts());
             log.info("    error parts: {}", session.getErrorParts());
+            if (!newColumns.isEmpty()) {
+                log.info("    new columns:");
+            }
+            for (Map.Entry<String, TDColumnType> pair : newColumns.entrySet()) {
+                log.info("      - {}: {}", pair.getKey(), pair.getValue());
+            }
+
+            // commit
             client.commitBulkImportSession(sessionName);
 
             // pass
@@ -569,6 +590,90 @@ public class TdOutputPlugin
         case UNKNOWN:
             throw new RuntimeException("Unknown bulk import status");
         }
+    }
+
+    Map<String, TDColumnType> updateSchema(TdApiClient client, Schema inputSchema, PluginTask task)
+    {
+        String databaseName = task.getDatabase();
+
+        TDTable table = findTable(client, databaseName, task.getTable());
+        if (table == null) {
+            return new HashMap<>();
+        }
+
+        final Map<String, TDColumnType> guessedSchema = new HashMap<>();
+        inputSchema.visitColumns(new ColumnVisitor() {
+            public void booleanColumn(Column column)
+            {
+                guessedSchema.put(column.getName(), TDPrimitiveColumnType.LONG);
+            }
+
+            public void longColumn(Column column)
+            {
+                guessedSchema.put(column.getName(), TDPrimitiveColumnType.LONG);;
+            }
+
+            public void doubleColumn(Column column)
+            {
+                guessedSchema.put(column.getName(), TDPrimitiveColumnType.DOUBLE);
+            }
+
+            public void stringColumn(Column column)
+            {
+                guessedSchema.put(column.getName(), TDPrimitiveColumnType.STRING);
+            }
+
+            public void timestampColumn(Column column)
+            {
+                guessedSchema.put(column.getName(), TDPrimitiveColumnType.STRING);
+            }
+        });
+
+        Map<String, Integer> usedNames = new HashMap<>();
+        for (TDColumn existent : table.getColumns()) {
+            usedNames.put(new String(existent.getKey()), 1);
+            guessedSchema.remove(existent.getName()); // don't change type of existent columns
+        }
+        guessedSchema.remove("time"); // don't change type of 'time' column
+
+        List<TDColumn> newSchema = new ArrayList<>(table.getColumns());
+        for (Map.Entry<String, TDColumnType> pair : guessedSchema.entrySet()) {
+            String key = renameColumn(pair.getKey());
+
+            if (!usedNames.containsKey(key)) {
+                usedNames.put(key, 1);
+            } else {
+                int next = usedNames.get(key);
+                key = key + "_" + next;
+                usedNames.put(key, next + 1);
+            }
+
+            newSchema.add(new TDColumn(pair.getKey(), pair.getValue(), key.getBytes(StandardCharsets.UTF_8)));
+        }
+
+        client.updateSchema(databaseName, task.getLoadTargetTableName(), newSchema);
+        return guessedSchema;
+    }
+
+    private static TDTable findTable(TdApiClient client, String databaseName, String tableName)
+    {
+        for (TDTable table : client.getTables(databaseName)) {
+            if (table.getName().equals(tableName)) {
+                return table;
+            }
+        }
+        return null;
+    }
+
+    private static final Pattern COLUMN_NAME_PATTERN = Pattern.compile("\\A[a-z_][a-z0-9_]*\\z");
+    private static final Pattern COLUMN_NAME_SQUASH_PATTERN = Pattern.compile("(?:[^a-zA-Z0-9_]|(?:\\A[^a-zA-Z_]))+");
+
+    private static String renameColumn(String origName)
+    {
+        if (COLUMN_NAME_PATTERN.matcher(origName).matches()) {
+            return origName;
+        }
+        return COLUMN_NAME_SQUASH_PATTERN.matcher(origName).replaceAll("_").toLowerCase();
     }
 
     @VisibleForTesting
