@@ -2,6 +2,7 @@
 
 * [new feature] Add time_value option  [#16](https://github.com/treasure-data/embulk-output-td/pull/16)
 * [new feature] Merge exact column types into the table schema [#25](https://github.com/treasure-data/embulk-output-td/pull/25)
+* [new feature]	Add stop_on_invalid_record option [#26](https://github.com/treasure-data/embulk-output-td/pull/26)
 * [maintenance] Use rename endpoint with 'overwrite' parameter [#23](https://github.com/treasure-data/embulk-output-td/pull/23)
 
 ## 0.1.6 - 2015-12-08
