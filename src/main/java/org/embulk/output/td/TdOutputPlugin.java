@@ -100,6 +100,10 @@ public class TdOutputPlugin
         @ConfigDefault("null")
         public Optional<String> getTimeColumn();
 
+        @Config("time_value")
+        @ConfigDefault("null")
+        public Optional<TimeValueConfig> getTimeValue(); // TODO allow timestamp format such as {from: "2015-01-01 00:00:00 UTC", to: "2015-01-02 00:00:00 UTC"} as well as unixtime integer
+
         @Config("unix_timestamp_unit")
         @ConfigDefault("\"sec\"")
         public UnixTimestampUnit getUnixTimestampUnit();
@@ -192,6 +196,19 @@ public class TdOutputPlugin
         @Config("use_ssl")
         @ConfigDefault("false")
         public boolean getUseSsl();
+    }
+
+    public interface TimeValueConfig
+            extends Task
+    {
+        @Config("from")
+        @Min(0)
+        public long getFrom();
+
+        @Config("to")
+        @ConfigDefault("0")
+        @Min(0)
+        public long getTo();
     }
 
     public static enum ConvertTimestampType
@@ -387,7 +404,7 @@ public class TdOutputPlugin
     }
 
     @VisibleForTesting
-    TdApiClient newTdApiClient(final PluginTask task)
+    public TdApiClient newTdApiClient(final PluginTask task)
     {
         Optional<HttpProxyConfig> httpProxyConfig = newHttpProxyConfig(task.getHttpProxy());
         TdApiClientConfig config = new TdApiClientConfig(task.getEndpoint(), task.getUseSsl(), httpProxyConfig);
