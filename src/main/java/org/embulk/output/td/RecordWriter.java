@@ -5,11 +5,7 @@ import com.google.common.base.Stopwatch;
 import com.google.common.base.Throwables;
 import com.treasuredata.api.TdApiClient;
 import org.embulk.config.TaskReport;
-import org.embulk.output.td.writer.FieldWriter;
-import org.embulk.output.td.writer.IFieldWriter;
 import org.embulk.output.td.writer.FieldWriterSet;
-import org.embulk.spi.Column;
-import org.embulk.spi.ColumnVisitor;
 import org.embulk.spi.Exec;
 import org.embulk.spi.Page;
 import org.embulk.spi.PageReader;
@@ -97,52 +93,7 @@ public class RecordWriter
 
         try {
             while (pageReader.nextRecord()) {
-                fieldWriters.beginRecord(builder);
-
-                pageReader.getSchema().visitColumns(new ColumnVisitor() {
-                    @Override
-                    public void booleanColumn(Column column)
-                    {
-                        write(column);
-                    }
-
-                    @Override
-                    public void longColumn(Column column)
-                    {
-                        write(column);
-                    }
-
-                    @Override
-                    public void doubleColumn(Column column)
-                    {
-                        write(column);
-                    }
-
-                    @Override
-                    public void stringColumn(Column column)
-                    {
-                        write(column);
-                    }
-
-                    @Override
-                    public void timestampColumn(Column column)
-                    {
-                        write(column);
-                    }
-
-                    private void write(Column column)
-                    {
-                        IFieldWriter fieldWriter = fieldWriters.getFieldWriter(column.getIndex());
-                        try {
-                            fieldWriter.writeKeyValue(builder, pageReader, column);
-                        }
-                        catch (IOException e) {
-                            throw Throwables.propagate(e);
-                        }
-                    }
-                });
-
-                fieldWriters.endRecord(builder);
+                fieldWriters.addRecord(builder, pageReader);
 
                 if (builder.getWrittenSize() > fileSplitSize) {
                     flush();

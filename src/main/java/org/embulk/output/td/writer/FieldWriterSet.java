@@ -1,10 +1,15 @@
 package org.embulk.output.td.writer;
 
 import java.io.IOException;
+
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
+import com.google.common.base.Throwables;
 import org.embulk.config.ConfigException;
 import org.embulk.output.td.TdOutputPlugin;
 import org.embulk.spi.Column;
+import org.embulk.spi.ColumnVisitor;
+import org.embulk.spi.PageReader;
 import org.embulk.spi.Schema;
 import org.embulk.spi.time.TimestampFormatter;
 import org.embulk.spi.type.BooleanType;
@@ -236,12 +241,54 @@ public class FieldWriterSet
         return false;
     }
 
+    @VisibleForTesting
     public IFieldWriter getFieldWriter(int index)
     {
         return fieldWriters[index];
     }
 
-    public void beginRecord(MsgpackGZFileBuilder builder)
+    public void addRecord(final MsgpackGZFileBuilder builder, final PageReader reader)
+            throws IOException
+    {
+        beginRecord(builder);
+
+        reader.getSchema().visitColumns(new ColumnVisitor() {
+            @Override
+            public void booleanColumn(Column column)
+            {
+                addColumn(builder, reader, column);
+            }
+
+            @Override
+            public void longColumn(Column column)
+            {
+                addColumn(builder, reader, column);
+            }
+
+            @Override
+            public void doubleColumn(Column column)
+            {
+                addColumn(builder, reader, column);
+            }
+
+            @Override
+            public void stringColumn(Column column)
+            {
+                addColumn(builder, reader, column);
+            }
+
+            @Override
+            public void timestampColumn(Column column)
+            {
+                addColumn(builder, reader, column);
+            }
+
+        });
+
+        endRecord(builder);
+    }
+
+    private void beginRecord(MsgpackGZFileBuilder builder)
             throws IOException
     {
         builder.writeMapBegin(fieldCount);
@@ -251,14 +298,19 @@ public class FieldWriterSet
         }
     }
 
-    public void endRecord(MsgpackGZFileBuilder builder)
+    private void endRecord(MsgpackGZFileBuilder builder)
             throws IOException
     {
         builder.writeMapEnd();
     }
 
-    public int getFieldCount()
+    private void addColumn(MsgpackGZFileBuilder builder, PageReader reader, Column column)
     {
-        return fieldCount;
+        try {
+            fieldWriters[column.getIndex()].writeKeyValue(builder, reader, column);
+        }
+        catch (IOException e) {
+            throw Throwables.propagate(e);
+        }
     }
 }
