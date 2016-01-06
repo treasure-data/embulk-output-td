@@ -36,6 +36,7 @@ import org.embulk.config.ConfigException;
 import org.embulk.config.Task;
 import org.embulk.config.TaskSource;
 import org.embulk.output.td.writer.FieldWriterSet;
+import org.embulk.spi.DataException;
 import org.embulk.spi.Exec;
 import org.embulk.spi.ColumnVisitor;
 import org.embulk.spi.ExecSession;
@@ -141,6 +142,10 @@ public class TdOutputPlugin
         @Config("column_options")
         @ConfigDefault("{}")
         public Map<String, TimestampColumnOption> getColumnOptions();
+
+        @Config("stop_on_invalid_record")
+        @ConfigDefault("false")
+        boolean getStopOnInvalidRecord();
 
         public boolean getDoUpload();
         public void setDoUpload(boolean doUpload);
@@ -589,6 +594,10 @@ public class TdOutputPlugin
             }
             for (Map.Entry<String, TDColumnType> pair : newColumns.entrySet()) {
                 log.info("      - {}: {}", pair.getKey(), pair.getValue());
+            }
+
+            if (session.getErrorRecords() > 0 && task.getStopOnInvalidRecord()) {
+                throw new DataException(String.format("Stop committing because the perform job skipped %d error records", session.getErrorRecords()));
             }
 
             // commit
