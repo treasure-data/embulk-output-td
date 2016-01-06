@@ -512,6 +512,11 @@ public class TestTdOutputPlugin
         return spy(new TdOutputPlugin());
     }
 
+    public static TdApiClient tdApiClient(TdOutputPlugin plugin, PluginTask task)
+    {
+        return spy(plugin.newTdApiClient(task));
+    }
+
     public static FieldWriterSet fieldWriters(Logger log, PluginTask task, Schema schema)
     {
         return spy(new FieldWriterSet(log, task, schema));

@@ -6,11 +6,6 @@ import org.embulk.config.ConfigSource;
 import org.embulk.spi.Exec;
 import org.embulk.spi.Schema;
 import org.embulk.spi.type.Types;
-import org.embulk.output.td.MsgpackGZFileBuilder;
-import org.embulk.output.td.RecordWriter;
-import org.embulk.output.td.TdOutputPlugin;
-import org.embulk.output.td.TdOutputPlugin.PluginTask;
-import com.treasuredata.api.TdApiClient;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -19,10 +14,6 @@ import org.slf4j.Logger;
 import static org.embulk.output.td.TestTdOutputPlugin.config;
 import static org.embulk.output.td.TestTdOutputPlugin.pluginTask;
 import static org.embulk.output.td.TestTdOutputPlugin.schema;
-import static org.embulk.output.td.TestTdOutputPlugin.recordWriter;
-import static org.embulk.output.td.TestTdOutputPlugin.plugin;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.spy;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -88,6 +79,17 @@ public class TestFieldWriterSet
                 assertTrue(t instanceof ConfigException);
             }
         }
+
+        { // if both of time_column and time_value are specified, it throws ConfigError.
+            schema = schema("_c0", Types.STRING, "_c1", Types.LONG);
+            try {
+                new FieldWriterSet(log, pluginTask(config.deepCopy().set("time_column", "_c1").set("time_value", 0)), schema);
+                fail();
+            }
+            catch (Throwable t) {
+                assertTrue(t instanceof ConfigException);
+            }
+        }
     }
 
     @Test
@@ -110,7 +112,7 @@ public class TestFieldWriterSet
     }
 
     @Test
-    public void specifiedTimeColumnOption()
+    public void specifiedTimeColumn()
     {
         { // time_column option (timestamp type)
             Schema schema = schema("_c0", Types.TIMESTAMP, "_c1", Types.STRING);
@@ -192,27 +194,6 @@ public class TestFieldWriterSet
 
             assertTrue(writers.getFieldWriter(0) instanceof TimestampFieldLongDuplicator); // c0
             assertTrue(writers.getFieldWriter(1) instanceof TimestampLongFieldWriter); // time renamed
-	}
-    }
-
-    public void specifiedTimeValueOption()
-            throws Exception
-    {
-        { // time_value option
-            PluginTask task = pluginTask(config.deepCopy().set("time_value", 10L));
-            Schema schema = schema("_c0", Types.TIMESTAMP, "_c1", Types.STRING);
-            FieldWriterSet writers = new FieldWriterSet(log, task, schema);
-
-            TdOutputPlugin plugin = plugin();
-            TdApiClient client = plugin.newTdApiClient(task);
-
-            RecordWriter recordWriter = recordWriter(task, client, writers);
-            recordWriter.open(schema);
-            MsgpackGZFileBuilder builder = spy(recordWriter.getBuilder());
-            doNothing().when(builder).writeMapBegin(3);
-            doNothing().when(builder).writeString("time");
-            doNothing().when(builder).writeLong(10L);
-            writers.beginRecord(builder);
         }
     }
 

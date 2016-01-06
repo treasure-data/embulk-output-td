@@ -3,7 +3,6 @@ package org.embulk.output.td;
 import com.treasuredata.api.TdApiClient;
 import org.embulk.EmbulkTestRuntime;
 import org.embulk.output.td.TdOutputPlugin.PluginTask;
-import org.embulk.output.td.writer.FieldWriterSet;
 import org.embulk.spi.Page;
 import org.embulk.spi.PageTestUtils;
 import org.embulk.spi.Schema;
@@ -27,6 +26,7 @@ import static org.embulk.output.td.TestTdOutputPlugin.plugin;
 import static org.embulk.output.td.TestTdOutputPlugin.pluginTask;
 import static org.embulk.output.td.TestTdOutputPlugin.schema;
 import static org.embulk.output.td.TestTdOutputPlugin.recordWriter;
+import static org.embulk.output.td.TestTdOutputPlugin.tdApiClient;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
@@ -58,16 +58,14 @@ public class TestRecordWriter
 
         plugin = plugin();
         task = pluginTask(config().set("session_name", "my_session"));
-
-        TdApiClient client = plugin.newTdApiClient(task);
-        FieldWriterSet fieldWriters = fieldWriters(log, task, schema);
-        recordWriter = recordWriter(task, client, fieldWriters);
     }
 
     @Test
     public void checkOpenAndClose()
             throws Exception
     {
+        recordWriter = recordWriter(task, tdApiClient(plugin, task), fieldWriters(log, task, schema));
+
         // confirm that no error happens
         try {
             recordWriter.open(schema);
@@ -82,6 +80,7 @@ public class TestRecordWriter
             throws Exception
     {
         TdApiClient client = spy(plugin.newTdApiClient(task));
+        recordWriter = recordWriter(task, client, fieldWriters(log, task, schema));
 
         { // add no record
             RecordWriter recordWriter = recordWriter(task, client, fieldWriters(log, task, schema));
@@ -116,6 +115,8 @@ public class TestRecordWriter
     public void addNonNullValues()
             throws Exception
     {
+        recordWriter = recordWriter(task, tdApiClient(plugin, task), fieldWriters(log, task, schema));
+
         try {
             recordWriter.open(schema);
 
@@ -152,6 +153,8 @@ public class TestRecordWriter
     public void addNullValues()
             throws Exception
     {
+        recordWriter = recordWriter(task, tdApiClient(plugin, task), fieldWriters(log, task, schema));
+
         try {
             recordWriter.open(schema);
 
@@ -184,8 +187,50 @@ public class TestRecordWriter
     }
 
     @Test
+    public void checkGeneratedTimeValueByOption()
+            throws Exception
+    {
+        schema = schema("_c0", Types.LONG, "_c1", Types.STRING,
+                "_c2", Types.BOOLEAN, "_c3", Types.DOUBLE, "_c4", Types.TIMESTAMP);
+        task = pluginTask(config().set("session_name", "my_session").set("time_value", 0));
+        recordWriter = recordWriter(task, tdApiClient(plugin, task), fieldWriters(log, task, schema));
+
+        try {
+            recordWriter.open(schema);
+
+            // values are not null
+            for (Page page : PageTestUtils.buildPage(runtime.getBufferAllocator(), schema,
+                    0L, "v", true, 0.0, Timestamp.ofEpochSecond(1442595600L))) {
+                recordWriter.add(page);
+            }
+
+            MsgpackGZFileBuilder builder = recordWriter.getBuilder();
+            builder.finish();
+
+            // record count 1
+            assertEquals(1, builder.getRecordCount());
+
+            Unpacker u = msgpack.createUnpacker(new GZIPInputStream(new FileInputStream(builder.getFile())));
+            MapValue v = u.readValue().asMapValue();
+
+            // compare actual values
+            assertEquals(0L, v.get(createRawValue("time")).asIntegerValue().getLong());
+            assertEquals(0L, v.get(createRawValue("_c0")).asIntegerValue().getLong());
+            assertEquals("v", v.get(createRawValue("_c1")).asRawValue().getString());
+            assertEquals(true, v.get(createRawValue("_c2")).asBooleanValue().getBoolean());
+            assertEquals(0.0, v.get(createRawValue("_c3")).asFloatValue().getDouble(), 0.000001);
+            assertEquals("2015-09-18 17:00:00.000", v.get(createRawValue("_c4")).asRawValue().getString());
+
+        }
+        finally {
+            recordWriter.close();
+        }
+    }
+
+    @Test
     public void doAbortNorthing()
     {
+        recordWriter = recordWriter(task, tdApiClient(plugin, task), fieldWriters(log, task, schema));
         recordWriter.abort();
         // no error happen
     }
@@ -193,6 +238,7 @@ public class TestRecordWriter
     @Test
     public void checkTaskReport()
     {
+        recordWriter = recordWriter(task, tdApiClient(plugin, task), fieldWriters(log, task, schema));
         assertTrue(recordWriter.commit().isEmpty());
     }
 }
