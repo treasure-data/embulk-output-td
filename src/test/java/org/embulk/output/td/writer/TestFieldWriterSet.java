@@ -1,5 +1,6 @@
 package org.embulk.output.td.writer;
 
+import com.google.common.collect.ImmutableMap;
 import org.embulk.EmbulkTestRuntime;
 import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
@@ -83,7 +84,7 @@ public class TestFieldWriterSet
         { // if both of time_column and time_value are specified, it throws ConfigError.
             schema = schema("_c0", Types.STRING, "_c1", Types.LONG);
             try {
-                new FieldWriterSet(log, pluginTask(config.deepCopy().set("time_column", "_c1").set("time_value", 0)), schema);
+                new FieldWriterSet(log, pluginTask(config.deepCopy().set("time_column", "_c1").set("time_value", ImmutableMap.of("from", 0L, "to", 0L))), schema);
                 fail();
             }
             catch (Throwable t) {
