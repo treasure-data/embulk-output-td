@@ -102,7 +102,7 @@ public class TdOutputPlugin
 
         @Config("time_value")
         @ConfigDefault("null")
-        public Optional<Long> getTimeValue();  // TODO allow timestamp format such as "2015-01-01 00:00:00 UTC" as well as unixtime integer
+        public Optional<TimeValueConfig> getTimeValue(); // TODO allow timestamp format such as {from: "2015-01-01 00:00:00 UTC", to: "2015-01-02 00:00:00 UTC"} as well as unixtime integer
 
         @Config("unix_timestamp_unit")
         @ConfigDefault("\"sec\"")
@@ -196,6 +196,19 @@ public class TdOutputPlugin
         @Config("use_ssl")
         @ConfigDefault("false")
         public boolean getUseSsl();
+    }
+
+    public interface TimeValueConfig
+            extends Task
+    {
+        @Config("from")
+        @Min(0)
+        public long getFrom();
+
+        @Config("to")
+        @ConfigDefault("0")
+        @Min(0)
+        public long getTo();
     }
 
     public static enum ConvertTimestampType

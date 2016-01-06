@@ -20,6 +20,7 @@ import org.embulk.spi.type.TimestampType;
 import org.embulk.spi.type.Type;
 import org.embulk.spi.util.Timestamps;
 import org.embulk.output.td.MsgpackGZFileBuilder;
+import org.embulk.output.td.TdOutputPlugin.TimeValueConfig;
 import org.slf4j.Logger;
 
 public class FieldWriterSet
@@ -33,14 +34,14 @@ public class FieldWriterSet
 
     private final int fieldCount;
     private final IFieldWriter[] fieldWriters;
-    private final Optional<Long> staticTimeValue;
+    private final Optional<TimeValueGenerator> staticTimeValue;
 
     public FieldWriterSet(Logger log, TdOutputPlugin.PluginTask task, Schema schema)
     {
         Optional<String> userDefinedPrimaryKeySourceColumnName = task.getTimeColumn();
         TdOutputPlugin.ConvertTimestampType convertTimestamp = task.getConvertTimestampType();
-        staticTimeValue = task.getTimeValue();
-        if (staticTimeValue.isPresent() && userDefinedPrimaryKeySourceColumnName.isPresent()) {
+        Optional<TimeValueConfig> timeValueConfig = task.getTimeValue();
+        if (timeValueConfig.isPresent() && userDefinedPrimaryKeySourceColumnName.isPresent()) {
             throw new ConfigException("Setting both time_column and time_value is invalid");
         }
 
@@ -77,7 +78,7 @@ public class FieldWriterSet
                     log.warn("time_column '{}' is set but 'time' column also exists. The existent 'time' column is renamed to {}",
                             userDefinedPrimaryKeySourceColumnName.get(), columnName);
                 }
-                else if (staticTimeValue.isPresent()) {
+                else if (timeValueConfig.isPresent()) {
                     columnName = newColumnUniqueName(columnName, schema);
                     mode = ColumnWriterMode.SIMPLE_VALUE;
                     log.warn("time_value is set but 'time' column also exists. The existent 'time' column is renamed to {}",
@@ -162,7 +163,7 @@ public class FieldWriterSet
             fc += 1;
         }
 
-        if (staticTimeValue.isPresent()) {
+        if (timeValueConfig.isPresent()) {
             // "time" column is written by RecordWriter
             fc += 1;
         }
@@ -216,6 +217,13 @@ public class FieldWriterSet
             // replace existint writer
             fieldWriters[duplicatePrimaryKeySourceIndex] = writer;
             fc += 1;
+        }
+
+        if (timeValueConfig.isPresent()) {
+            staticTimeValue = Optional.of(new TimeValueGenerator(timeValueConfig.get()));
+        }
+        else {
+            staticTimeValue = Optional.absent();
         }
 
         fieldCount = fc;
@@ -294,7 +302,7 @@ public class FieldWriterSet
         builder.writeMapBegin(fieldCount);
         if (staticTimeValue.isPresent()) {
             builder.writeString("time");
-            builder.writeLong(staticTimeValue.get());
+            builder.writeLong(staticTimeValue.get().next());
         }
     }
 
@@ -311,6 +319,31 @@ public class FieldWriterSet
         }
         catch (IOException e) {
             throw Throwables.propagate(e);
+        }
+    }
+
+    static class TimeValueGenerator
+    {
+        private final long from;
+        private final long to;
+        private long current;
+
+        TimeValueGenerator(TimeValueConfig config)
+        {
+            current = from = config.getFrom();
+            to = config.getTo();
+        }
+
+        long next()
+        {
+            try {
+                return current++;
+            }
+            finally {
+                if (current >= to) {
+                    current = from;
+                }
+            }
         }
     }
 }
