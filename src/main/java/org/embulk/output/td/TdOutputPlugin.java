@@ -1,12 +1,14 @@
 package org.embulk.output.td;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 import java.nio.charset.StandardCharsets;
 import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
 
 import javax.validation.constraints.Min;
 import javax.validation.constraints.Max;
@@ -47,6 +49,9 @@ import org.embulk.spi.TransactionalPageOutput;
 import org.embulk.spi.time.Timestamp;
 import org.embulk.spi.time.TimestampFormatter;
 import org.joda.time.format.DateTimeFormat;
+import org.msgpack.MessagePack;
+import org.msgpack.unpacker.Unpacker;
+import org.msgpack.unpacker.UnpackerIterator;
 import org.slf4j.Logger;
 
 public class TdOutputPlugin
@@ -146,6 +151,11 @@ public class TdOutputPlugin
         @Config("stop_on_invalid_record")
         @ConfigDefault("false")
         boolean getStopOnInvalidRecord();
+
+        @Config("displayed_error_records_count_limit")
+        @ConfigDefault("10")
+        @Min(0)
+        int getDisplayedErrorRecordsCountLimit();
 
         public boolean getDoUpload();
         public void setDoUpload(boolean doUpload);
@@ -596,6 +606,8 @@ public class TdOutputPlugin
                 log.info("      - {}: {}", pair.getKey(), pair.getValue());
             }
 
+            showBulkImportErrorRecords(client, sessionName, (int) Math.min(session.getErrorRecords(), task.getDisplayedErrorRecordsCountLimit()));
+
             if (session.getErrorRecords() > 0 && task.getStopOnInvalidRecord()) {
                 throw new DataException(String.format("Stop committing because the perform job skipped %d error records", session.getErrorRecords()));
             }
@@ -700,6 +712,21 @@ public class TdOutputPlugin
             return origName;
         }
         return COLUMN_NAME_SQUASH_PATTERN.matcher(origName).replaceAll("_").toLowerCase();
+    }
+
+    void showBulkImportErrorRecords(TdApiClient client, String sessionName, int recordCountLimit)
+    {
+        log.info("Show {} error records", recordCountLimit);
+        try (InputStream in = client.getBulkImportErrorRecords(sessionName)) {
+            Unpacker unpacker = new MessagePack().createUnpacker(new GZIPInputStream(in));
+            UnpackerIterator records = unpacker.iterator();
+            for (int i = 0; i < recordCountLimit; i++) {
+                log.info("    {}", records.next());
+            }
+        }
+        catch (Exception ignored) {
+            log.info("Stop downloading error records", ignored);
+        }
     }
 
     @VisibleForTesting

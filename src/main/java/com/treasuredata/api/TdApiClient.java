@@ -3,6 +3,7 @@ package com.treasuredata.api;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
 import com.treasuredata.api.model.TDBulkImportSession;
 import com.treasuredata.api.model.TDColumn;
@@ -17,6 +18,8 @@ import org.eclipse.jetty.client.Origin;
 import org.eclipse.jetty.client.ProxyConfiguration;
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.eclipse.jetty.client.api.Request;
+import org.eclipse.jetty.client.util.InputStreamContentProvider;
+import org.eclipse.jetty.client.util.InputStreamResponseListener;
 import org.eclipse.jetty.client.util.StringContentProvider;
 import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.util.HttpCookieStore;
@@ -28,6 +31,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.security.MessageDigest;
@@ -38,6 +42,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class TdApiClient
         implements Closeable
@@ -241,6 +248,23 @@ public class TdApiClient
         Request request = prepareExchange(HttpMethod.POST,
                 buildUrl("/v3/bulk_import/delete", sessionName));
         ContentResponse response = executeExchange(request);
+    }
+
+    public InputStream getBulkImportErrorRecords(String sessionName)
+    {
+        // TODO use td-client-java v0.7
+
+        Request request = prepareExchange(HttpMethod.GET,
+                buildUrl("/v3/bulk_import/error_records", sessionName));
+        InputStreamResponseListener listener = new InputStreamResponseListener();
+        request.send(listener);
+        try {
+            listener.get(60000, TimeUnit.MILLISECONDS); // 60 sec.
+            return listener.getInputStream();
+        }
+        catch (InterruptedException | ExecutionException | TimeoutException e) {
+            throw Throwables.propagate(e);
+        }
     }
 
     private Request prepareExchange(HttpMethod method, String url)
