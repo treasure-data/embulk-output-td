@@ -7,17 +7,20 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
 import javax.validation.constraints.Min;
 import javax.validation.constraints.Max;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.google.common.collect.ImmutableMap;
 import com.treasuredata.api.TdApiClient;
 import com.treasuredata.api.TdApiClientConfig;
 import com.treasuredata.api.TdApiClientConfig.HttpProxyConfig;
@@ -213,17 +216,70 @@ public class TdOutputPlugin
         public boolean getUseSsl();
     }
 
-    public interface TimeValueConfig
-            extends Task
+    public static class TimeValueConfig
     {
-        @Config("from")
-        @Min(0)
-        public long getFrom();
+        @JsonCreator
+        public static TimeValueConfig of(@JsonProperty("from") long from, @JsonProperty("to") long to)
+        {
+            if (from < 0 || from > 253402300799L || to < 0 || to > 253402300799L) {
+                throw new ConfigException(String.format("time_value 'from' and 'to' should be [0, 253402300799]: {from: %d, to: %d}", from, to));
+            }
+            if (from > to) {
+                throw new ConfigException(String.format("time_value 'to' should be greater than or equal to 'from': {from: %d, to: %d}", from, to));
+            }
 
-        @Config("to")
-        @ConfigDefault("0")
-        @Min(0)
-        public long getTo();
+            TimeValueConfig config = new TimeValueConfig(from, to);
+            return config;
+        }
+
+        private final long from;
+        private final long to;
+
+        public TimeValueConfig(long from, long to)
+        {
+            this.from = from;
+            this.to = to;
+        }
+
+        @JsonProperty("from")
+        public long getFrom()
+        {
+            return from;
+        }
+
+        @JsonProperty("to")
+        public long getTo()
+        {
+            return to;
+        }
+
+        @JsonValue
+        public Map<String, Object> getMap()
+        {
+            return ImmutableMap.<String, Object>of("from", from, "to", to);
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return Objects.hash(from, to);
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (this == obj) {
+                return true;
+            }
+
+            if (!(obj instanceof TimeValueConfig)) {
+                return false;
+            }
+
+            TimeValueConfig that = (TimeValueConfig) obj;
+            return Objects.equals(from, that.from) && Objects.equals(to, that.to);
+        }
+
     }
 
     public static enum ConvertTimestampType
