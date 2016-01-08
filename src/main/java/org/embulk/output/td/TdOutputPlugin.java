@@ -606,7 +606,9 @@ public class TdOutputPlugin
                 log.info("      - {}: {}", pair.getKey(), pair.getValue());
             }
 
-            showBulkImportErrorRecords(client, sessionName, (int) Math.min(session.getErrorRecords(), task.getDisplayedErrorRecordsCountLimit()));
+            if (session.getErrorRecords() > 0L) {
+                showBulkImportErrorRecords(client, sessionName, (int) Math.min(session.getErrorRecords(), task.getDisplayedErrorRecordsCountLimit()));
+            }
 
             if (session.getErrorRecords() > 0 && task.getStopOnInvalidRecord()) {
                 throw new DataException(String.format("Stop committing because the perform job skipped %d error records", session.getErrorRecords()));
