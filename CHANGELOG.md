@@ -1,5 +1,6 @@
-## 0.1.8 - 20XX-XX-XX
+## 0.1.8 - 2016-01-09
 
+* [new feature] Add mode to time value option  [#31](https://github.com/treasure-data/embulk-output-td/pull/31)
 * [maintenance] Remove unnecessary warning messages within showErrorRecord method [#30](https://github.com/treasure-data/embulk-output-td/pull/30)
 
 ## 0.1.7 - 2016-01-07
