@@ -7,6 +7,8 @@ import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import org.embulk.config.ConfigException;
 import org.embulk.output.td.TdOutputPlugin;
+import org.embulk.output.td.TimeValueConfig;
+import org.embulk.output.td.TimeValueGenerator;
 import org.embulk.spi.Column;
 import org.embulk.spi.ColumnVisitor;
 import org.embulk.spi.PageReader;
@@ -20,7 +22,6 @@ import org.embulk.spi.type.TimestampType;
 import org.embulk.spi.type.Type;
 import org.embulk.spi.util.Timestamps;
 import org.embulk.output.td.MsgpackGZFileBuilder;
-import org.embulk.output.td.TdOutputPlugin.TimeValueConfig;
 import org.slf4j.Logger;
 
 public class FieldWriterSet
@@ -220,7 +221,7 @@ public class FieldWriterSet
         }
 
         if (timeValueConfig.isPresent()) {
-            staticTimeValue = Optional.of(new TimeValueGenerator(timeValueConfig.get()));
+            staticTimeValue = Optional.of(TimeValueGenerator.newGenerator(timeValueConfig.get()));
         }
         else {
             staticTimeValue = Optional.absent();
@@ -319,31 +320,6 @@ public class FieldWriterSet
         }
         catch (IOException e) {
             throw Throwables.propagate(e);
-        }
-    }
-
-    static class TimeValueGenerator
-    {
-        private final long from;
-        private final long to;
-        private long current;
-
-        TimeValueGenerator(TimeValueConfig config)
-        {
-            current = from = config.getFrom();
-            to = config.getTo();
-        }
-
-        long next()
-        {
-            try {
-                return current++;
-            }
-            finally {
-                if (current >= to) {
-                    current = from;
-                }
-            }
         }
     }
 }

@@ -213,19 +213,6 @@ public class TdOutputPlugin
         public boolean getUseSsl();
     }
 
-    public interface TimeValueConfig
-            extends Task
-    {
-        @Config("from")
-        @Min(0)
-        public long getFrom();
-
-        @Config("to")
-        @ConfigDefault("0")
-        @Min(0)
-        public long getTo();
-    }
-
     public static enum ConvertTimestampType
     {
         STRING(-1),
