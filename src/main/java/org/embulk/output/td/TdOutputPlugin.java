@@ -109,6 +109,7 @@ public class TdOutputPlugin
         @Config("time_value")
         @ConfigDefault("null")
         public Optional<TimeValueConfig> getTimeValue(); // TODO allow timestamp format such as {from: "2015-01-01 00:00:00 UTC", to: "2015-01-02 00:00:00 UTC"} as well as unixtime integer
+        public void setTimeValue(Optional<TimeValueConfig> timeValue);
 
         @Config("unix_timestamp_unit")
         @ConfigDefault("\"sec\"")

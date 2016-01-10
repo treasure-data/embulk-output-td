@@ -6,11 +6,13 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import org.embulk.config.ConfigException;
+import org.embulk.config.ConfigSource;
 import org.embulk.output.td.TdOutputPlugin;
 import org.embulk.output.td.TimeValueConfig;
 import org.embulk.output.td.TimeValueGenerator;
 import org.embulk.spi.Column;
 import org.embulk.spi.ColumnVisitor;
+import org.embulk.spi.Exec;
 import org.embulk.spi.PageReader;
 import org.embulk.spi.Schema;
 import org.embulk.spi.time.TimestampFormatter;
@@ -48,7 +50,6 @@ public class FieldWriterSet
 
         boolean hasPkWriter = false;
         int duplicatePrimaryKeySourceIndex = -1;
-        int firstTimestampColumnIndex = -1;
 
         int fc = 0;
         fieldWriters = new IFieldWriter[schema.size()];
@@ -108,7 +109,6 @@ public class FieldWriterSet
                     }
                     else if (columnType instanceof TimestampType) {
                         writer = new TimestampLongFieldWriter(columnName);
-
                         hasPkWriter = true;
                     }
                     else {
@@ -142,9 +142,6 @@ public class FieldWriterSet
                             // Thread of control doesn't come here but, just in case, it throws ConfigException.
                             throw new ConfigException(String.format("Unknown option {} as convert_timestamp_type", convertTimestamp));
                         }
-                        if (firstTimestampColumnIndex < 0) {
-                            firstTimestampColumnIndex = i;
-                        }
                     }
                     else {
                         throw new ConfigException("Unsupported type: " + columnType);
@@ -164,24 +161,24 @@ public class FieldWriterSet
             fc += 1;
         }
 
-        if (timeValueConfig.isPresent()) {
-            // "time" column is written by RecordWriter
-            fc += 1;
+        if (hasPkWriter) {
+            // appropriate 'time' column is found
+
+            staticTimeValue = Optional.absent();
+            fieldCount = fc;
+            return;
         }
-        else if (!hasPkWriter) {
-            // PRIMARY_KEY was not found.
-            if (duplicatePrimaryKeySourceIndex < 0) {
-                if (userDefinedPrimaryKeySourceColumnName.isPresent()) {
-                    throw new ConfigException(String.format("time_column '%s' does not exist", userDefinedPrimaryKeySourceColumnName.get()));
-                }
-                else if (firstTimestampColumnIndex >= 0) {
-                    // if time is not found, use the first timestamp column
-                    duplicatePrimaryKeySourceIndex = firstTimestampColumnIndex;
-                }
-                else {
-                    throw new ConfigException(String.format("TD output plugin requires at least one timestamp column, or a long column named 'time'"));
-                }
-            }
+
+        if (timeValueConfig.isPresent()) {
+            // 'time_value' option is specified
+
+            staticTimeValue = Optional.of(TimeValueGenerator.newGenerator(timeValueConfig.get()));
+            fieldCount = fc + 1;
+            return;
+        }
+
+        if (!hasPkWriter && duplicatePrimaryKeySourceIndex >= 0) {
+            // 'time_column' option is correctly specified
 
             String columnName = schema.getColumnName(duplicatePrimaryKeySourceIndex);
             Type columnType = schema.getColumnType(duplicatePrimaryKeySourceIndex);
@@ -217,17 +214,27 @@ public class FieldWriterSet
 
             // replace existint writer
             fieldWriters[duplicatePrimaryKeySourceIndex] = writer;
-            fc += 1;
-        }
-
-        if (timeValueConfig.isPresent()) {
-            staticTimeValue = Optional.of(TimeValueGenerator.newGenerator(timeValueConfig.get()));
-        }
-        else {
             staticTimeValue = Optional.absent();
+            fieldCount = fc + 1;
+            return;
         }
 
-        fieldCount = fc;
+        if (!hasPkWriter) {
+            // primary key is not found yet
+
+            if (userDefinedPrimaryKeySourceColumnName.isPresent()) {
+                throw new ConfigException(String.format("A specified time_column '%s' does not exist", userDefinedPrimaryKeySourceColumnName.get()));
+            }
+
+            long uploadTime = System.currentTimeMillis() / 1000;
+            TimeValueConfig newConfig = Exec.newConfigSource().set("mode", "fixed_time").set("value", uploadTime).loadConfig(TimeValueConfig.class);
+            task.setTimeValue(Optional.of(newConfig));
+            staticTimeValue = Optional.of(TimeValueGenerator.newGenerator(newConfig));
+            fieldCount = fc + 1;
+            return;
+        }
+
+        throw new IllegalStateException("Cannot select primary key");
     }
 
     private static String newColumnUniqueName(String originalName, Schema schema)
