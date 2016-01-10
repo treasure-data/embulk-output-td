@@ -48,17 +48,6 @@ public class TestFieldWriterSet
             }
         }
 
-        { // if schema doesn't have time column and the user doesn't specify time_column option, it throws ConfigError.
-            schema = schema("_c0", Types.STRING, "_c1", Types.STRING);
-            try {
-                new FieldWriterSet(log, pluginTask(config), schema);
-                fail();
-            }
-            catch (Throwable t) {
-                assertTrue(t instanceof ConfigException);
-            }
-        }
-
         { // if schema doesn't have a column specified as time_column column, it throws ConfigError
             schema = schema("_c0", Types.STRING, "_c1", Types.STRING);
             try {
@@ -205,6 +194,7 @@ public class TestFieldWriterSet
         Schema schema = schema("_c0", Types.TIMESTAMP, "_c1", Types.LONG);
         FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config), schema);
 
-        assertTrue(writers.getFieldWriter(0) instanceof TimestampFieldLongDuplicator);
+        assertTrue(writers.getFieldWriter(0) instanceof TimestampStringFieldWriter); // c0
+        assertTrue(writers.getFieldWriter(1) instanceof LongFieldWriter); // c1
     }
 }
