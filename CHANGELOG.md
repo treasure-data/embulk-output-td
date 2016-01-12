@@ -1,3 +1,7 @@
+## 0.2.0 - 2016-01-12
+
+* [new feature] Not use first timestamp column as primary key [#32](https://github.com/treasure-data/embulk-output-td/pull/32)
+
 ## 0.1.8 - 2016-01-09
 
 * [new feature] Add mode to time value option  [#31](https://github.com/treasure-data/embulk-output-td/pull/31)
