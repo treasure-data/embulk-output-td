@@ -10,51 +10,70 @@ public abstract class TimeValueGenerator
     public static TimeValueGenerator newGenerator(final TimeValueConfig config)
     {
         switch (config.getMode()) {
-            case "incremental_time": { // default mode
+            case "incremental_time": // default mode
                 require(config.getFrom(), "'from', 'to'");
+                validateTimeRange(config.getFrom().get(), "'from'");
                 require(config.getTo(), "'to'");
+                validateTimeRange(config.getTo().get(), "'to'");
                 reject(config.getValue(), "'value'");
 
-                return new TimeValueGenerator()
-                {
-                    private final long from = config.getFrom().get();
-                    private final long to = config.getTo().get();
+                return new IncrementalTimeValueGenerator(config);
 
-                    private long current = from;
-
-                    @Override
-                    public long next()
-                    {
-                        try {
-                            return current++;
-                        }
-                        finally {
-                            if (current > to) {
-                                current = from;
-                            }
-                        }
-                    }
-                };
-            }
-            case "fixed_time": {
+            case "fixed_time":
                 require(config.getValue(), "'value'");
+                validateTimeRange(config.getValue().get(), "'value'");
                 reject(config.getFrom(), "'from'");
                 reject(config.getTo(), "'to'");
 
-                return new TimeValueGenerator()
-                {
-                    private final long fixed = config.getValue().get();
+                return new FixedTimeValueGenerator(config);
 
-                    @Override
-                    public long next()
-                    {
-                        return fixed;
-                    }
-                };
-            }
-            default: {
+            default:
                 throw new ConfigException(String.format("Unknwon mode '%s'. Supported methods are incremental_time, fixed_time.", config.getMode()));
+        }
+    }
+
+    public static class IncrementalTimeValueGenerator
+            extends TimeValueGenerator
+    {
+        private final long from;
+        private final long to;
+
+        private long current;
+
+        public IncrementalTimeValueGenerator(final TimeValueConfig config)
+        {
+            current = from = config.getFrom().get();
+            to = config.getTo().get();
+        }
+
+        @Override
+        public long next()
+        {
+            try {
+                return current++;
             }
+            finally {
+                if (current > to) {
+                    current = from;
+                }
+            }
+        }
+    }
+
+    public static class FixedTimeValueGenerator
+            extends TimeValueGenerator
+    {
+        private final long value;
+
+        public FixedTimeValueGenerator(final TimeValueConfig config)
+        {
+            value = config.getValue().get();
+        }
+
+        @Override
+        public long next()
+        {
+            return value;
         }
     }
 
@@ -66,6 +85,13 @@ public abstract class TimeValueGenerator
         }
         else {
             throw new ConfigException("Required option is not set: " + message);
+        }
+    }
+
+    private static void validateTimeRange(long value, String message)
+    {
+        if (value < 0 || 253402300799L < value) { // should be [1970-01-01 00:00:00, 9999-12-31 23:59:59]
+            throw new ConfigException("The option value must be within [0, 253402300799L]: " + message);
         }
     }
 
