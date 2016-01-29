@@ -1,3 +1,7 @@
+## 0.2.1 - 20XX-XX-XX
+
+* [new feature] Add truncate mode [#33](https://github.com/treasure-data/embulk-output-td/pull/33)
+
 ## 0.2.0 - 2016-01-12
 
 * [new feature] Not use first timestamp column as primary key [#32](https://github.com/treasure-data/embulk-output-td/pull/32)
