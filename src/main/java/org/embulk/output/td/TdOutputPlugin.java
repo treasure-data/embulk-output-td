@@ -629,7 +629,7 @@ public class TdOutputPlugin
 
     Map<String, TDColumnType> updateSchema(TdApiClient client, Schema inputSchema, PluginTask task)
     {
-        if (task.getMode() == Mode.TRUNCATE) { // truncate mode doesn't update the table schema.
+        if (task.getMode() == Mode.REPLACE) { // replace mode doesn't update the table schema.
             return ImmutableMap.of();
         }
 
