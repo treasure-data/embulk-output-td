@@ -15,7 +15,7 @@ TODO: Write short description here
 - **http_proxy**: http proxy configuration (tuple of host, port and useSsl, default is null)
 - **use_ssl**: the flag (boolean, default=true)
 - **auto_create_table**: the flag for creating the database and/or the table if they don't exist (boolean, default=true)
-- **mode**: two ways 'append' and 'replace' to modify data (string, default='append')
+- **mode**: 'append', 'replace' and 'truncate' (string, default='append')
 - **database**: database name (string, required)
 - **table**: table name (string, required)
 - **session**: bulk_import session name (string, optional)
@@ -32,6 +32,18 @@ TODO: Write short description here
 - **column_options**: advanced: a key-value pairs where key is a column name and value is options for the column.
   - **timezone**: If input column type (embulk type) is timestamp, this plugin needs to format the timestamp value into a SQL string. In this cases, this timezone option is used to control the timezone. (string, value of default_timezone option is used by default)
   - **format**: If input column type (embulk type) is timestamp, this plugin needs to format the timestamp value into a string. This timestamp_format option is used to control the format of the timestamp. (string, value of default_timestamp_format option is used by default)
+
+## Modes
+* **append**:
+  - Uploads data to existing table directly.
+* **replace**:
+  - Creates new temp table and uploads data to the temp table first.
+  - After uploading finished, the table specified as 'table' option is replaced with the temp table.
+  - Schema in existing table is added to the replaced table.
+* **truncate**:
+  - Creates new temp table and uploads data to the temp table first.
+  - After uploading finished, the table specified as 'table' option is replaced with the temp table.
+  - Schema in existing table is not migrated to the replaced table.
 
 ## Example
 Here is sample configuration for TD output plugin.

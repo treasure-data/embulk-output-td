@@ -18,6 +18,7 @@ import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.google.common.collect.ImmutableMap;
 import com.treasuredata.api.TdApiClient;
 import com.treasuredata.api.TdApiClientConfig;
 import com.treasuredata.api.TdApiClientConfig.HttpProxyConfig;
@@ -171,7 +172,7 @@ public class TdOutputPlugin
 
     public enum Mode
     {
-        APPEND, REPLACE;
+        APPEND, REPLACE, TRUNCATE;
 
         @JsonCreator
         public static Mode fromConfig(String value)
@@ -181,8 +182,10 @@ public class TdOutputPlugin
                 return APPEND;
             case "replace":
                 return REPLACE;
+            case "truncate":
+                return TRUNCATE;
             default:
-                throw new ConfigException(String.format("Unknown mode '%s'. Supported modes are [append, replace]", value));
+                throw new ConfigException(String.format("Unknown mode '%s'. Supported modes are [append, replace, truncate]", value));
             }
         }
 
@@ -194,6 +197,8 @@ public class TdOutputPlugin
                 return "append";
             case REPLACE:
                 return "replace";
+            case TRUNCATE:
+                return "truncate";
             default:
                 throw new IllegalStateException();
             }
@@ -336,6 +341,7 @@ public class TdOutputPlugin
                 break;
 
             case REPLACE:
+            case TRUNCATE:
                 task.setLoadTargetTableName(
                         createTemporaryTableWithPrefix(client, databaseName, makeTablePrefix(task)));
                 break;
@@ -372,6 +378,7 @@ public class TdOutputPlugin
             // already done
             break;
         case REPLACE:
+        case TRUNCATE:
             // rename table
             renameTable(client, task.getDatabase(), task.getLoadTargetTableName(), task.getTable());
         }
@@ -622,6 +629,10 @@ public class TdOutputPlugin
 
     Map<String, TDColumnType> updateSchema(TdApiClient client, Schema inputSchema, PluginTask task)
     {
+        if (task.getMode() == Mode.TRUNCATE) { // truncate mode doesn't update the table schema.
+            return ImmutableMap.of();
+        }
+
         String databaseName = task.getDatabase();
 
         TDTable table = findTable(client, databaseName, task.getTable());
