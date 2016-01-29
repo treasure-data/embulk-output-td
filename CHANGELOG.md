@@ -1,4 +1,4 @@
-## 0.2.1 - 20XX-XX-XX
+## 0.2.1 - 2016-01-28
 
 * [new feature] Add truncate mode [#33](https://github.com/treasure-data/embulk-output-td/pull/33)
 
