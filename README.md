@@ -39,11 +39,11 @@ TODO: Write short description here
 * **replace**:
   - Creates new temp table and uploads data to the temp table first.
   - After uploading finished, the table specified as 'table' option is replaced with the temp table.
-  - Schema in existing table is added to the replaced table.
+  - Schema in existing table is not migrated to the replaced table.
 * **truncate**:
   - Creates new temp table and uploads data to the temp table first.
   - After uploading finished, the table specified as 'table' option is replaced with the temp table.
-  - Schema in existing table is not migrated to the replaced table.
+  - Schema in existing table is added to the replaced table.
 
 ## Example
 Here is sample configuration for TD output plugin.
