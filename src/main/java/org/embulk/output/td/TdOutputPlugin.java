@@ -19,6 +19,7 @@ import com.google.common.base.Throwables;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import com.treasuredata.api.TdApiClient;
 import com.treasuredata.api.TdApiClientConfig;
 import com.treasuredata.api.TdApiClientConfig.HttpProxyConfig;
@@ -630,16 +631,8 @@ public class TdOutputPlugin
 
     Map<String, TDColumnType> updateSchema(TdApiClient client, Schema inputSchema, PluginTask task)
     {
-        if (task.getMode() == Mode.REPLACE) { // replace mode doesn't update the table schema.
-            return ImmutableMap.of();
-        }
-
         String databaseName = task.getDatabase();
-
         TDTable table = findTable(client, databaseName, task.getTable());
-        if (table == null) {
-            return new HashMap<>();
-        }
 
         final Map<String, TDColumnType> guessedSchema = new HashMap<>();
         inputSchema.visitColumns(new ColumnVisitor() {
@@ -670,13 +663,22 @@ public class TdOutputPlugin
         });
 
         Map<String, Integer> usedNames = new HashMap<>();
-        for (TDColumn existent : table.getColumns()) {
-            usedNames.put(new String(existent.getKey()), 1);
-            guessedSchema.remove(existent.getName()); // don't change type of existent columns
+        if (task.getMode() != Mode.REPLACE) {
+            for (TDColumn existent : table.getColumns()) {
+                usedNames.put(new String(existent.getKey()), 1);
+                guessedSchema.remove(existent.getName()); // don't change type of existent columns
+            }
         }
         guessedSchema.remove("time"); // don't change type of 'time' column
 
-        List<TDColumn> newSchema = new ArrayList<>(table.getColumns());
+        List<TDColumn> newSchema;
+        if (task.getMode() != Mode.REPLACE) {
+            newSchema = new ArrayList<>(table.getColumns());
+        }
+        else {
+            newSchema = Lists.newArrayList();
+        }
+
         for (Map.Entry<String, TDColumnType> pair : guessedSchema.entrySet()) {
             String key = renameColumn(pair.getKey());
 
