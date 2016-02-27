@@ -330,7 +330,7 @@ public class TdOutputPlugin
             switch (task.getMode()) {
             case APPEND:
                 if (task.getAutoCreateTable()) {
-                    // auto_create_table is valid only with append mode (replace mode always creates a new table)
+                    // auto_create_table is valid only with append mode
                     createTableIfNotExists(client, databaseName, tableName);
                 }
                 else {
@@ -342,8 +342,9 @@ public class TdOutputPlugin
 
             case REPLACE:
             case TRUNCATE:
-                task.setLoadTargetTableName(
-                        createTemporaryTableWithPrefix(client, databaseName, makeTablePrefix(task)));
+                // replace and truncate modes always create a new table if the table doesn't exist
+                createTableIfNotExists(client, databaseName, tableName);
+                task.setLoadTargetTableName(createTemporaryTableWithPrefix(client, databaseName, makeTablePrefix(task)));
                 break;
             }
 
