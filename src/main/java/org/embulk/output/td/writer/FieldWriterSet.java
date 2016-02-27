@@ -19,6 +19,7 @@ import org.embulk.spi.Schema;
 import org.embulk.spi.time.TimestampFormatter;
 import org.embulk.spi.type.BooleanType;
 import org.embulk.spi.type.DoubleType;
+import org.embulk.spi.type.JsonType;
 import org.embulk.spi.type.LongType;
 import org.embulk.spi.type.StringType;
 import org.embulk.spi.type.TimestampType;
@@ -238,6 +239,9 @@ public class FieldWriterSet
         else if (columnType instanceof TimestampType) {
             return newSimpleTimestampFieldWriter(columnName, columnType, convertTimestampType, timestampFormatter);
         }
+        else if (columnType instanceof JsonType) {
+            return new JsonFieldWriter(columnName);
+        }
         else {
             throw new ConfigException("Unsupported type: " + columnType);
         }
@@ -300,6 +304,11 @@ public class FieldWriterSet
                 addColumn(builder, reader, column);
             }
 
+            @Override
+            public void jsonColumn(Column column)
+            {
+                addColumn(builder, reader, column);
+            }
         });
 
         endRecord(builder);
