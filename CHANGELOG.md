@@ -1,4 +1,4 @@
-## 0.2.2 - 20XX-XX-XX
+## 0.2.2 - 2016-02-29
 
 * [maintenance] Update a table schema by Embulk's guessed columns if the # of the uploaded record is zero [#36](https://github.com/treasure-data/embulk-output-td/pull/36)
 * [maintenance] replace and truncate modes create a new table if the table doesn't exists [#35](https://github.com/treasure-data/embulk-output-td/pull/35)
