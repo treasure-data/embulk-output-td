@@ -3,21 +3,20 @@ package org.embulk.output.td;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import com.treasuredata.api.TdApiClient;
-import com.treasuredata.api.TdApiConflictException;
-import com.treasuredata.api.TdApiNotFoundException;
-import com.treasuredata.api.model.TDBulkImportSession;
-import com.treasuredata.api.model.TDBulkImportSession.ImportStatus;
-import com.treasuredata.api.model.TDColumnType;
-import com.treasuredata.api.model.TDTable;
-import com.treasuredata.api.model.TDTableType;
+import com.treasuredata.client.TDClient;
+import com.treasuredata.client.TDClientHttpConflictException;
+import com.treasuredata.client.TDClientHttpNotFoundException;
+import com.treasuredata.client.model.TDBulkImportSession;
+import com.treasuredata.client.model.TDBulkImportSession.ImportStatus;
+import com.treasuredata.client.model.TDColumnType;
+import com.treasuredata.client.model.TDTable;
+import com.treasuredata.client.model.TDTableType;
 import org.embulk.EmbulkTestRuntime;
 import org.embulk.config.TaskReport;
 import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
 import org.embulk.config.TaskSource;
-import org.embulk.output.td.TdOutputPlugin.Mode;
 import org.embulk.output.td.TdOutputPlugin.PluginTask;
 import org.embulk.output.td.TdOutputPlugin.TimestampColumnOption;
 import org.embulk.output.td.TdOutputPlugin.UnixTimestampUnit;
@@ -38,12 +37,12 @@ import org.slf4j.Logger;
 import java.util.HashMap;
 import java.util.List;
 
-import static com.treasuredata.api.model.TDBulkImportSession.ImportStatus.COMMITTED;
-import static com.treasuredata.api.model.TDBulkImportSession.ImportStatus.COMMITTING;
-import static com.treasuredata.api.model.TDBulkImportSession.ImportStatus.PERFORMING;
-import static com.treasuredata.api.model.TDBulkImportSession.ImportStatus.READY;
-import static com.treasuredata.api.model.TDBulkImportSession.ImportStatus.UNKNOWN;
-import static com.treasuredata.api.model.TDBulkImportSession.ImportStatus.UPLOADING;
+import static com.treasuredata.client.model.TDBulkImportSession.ImportStatus.COMMITTED;
+import static com.treasuredata.client.model.TDBulkImportSession.ImportStatus.COMMITTING;
+import static com.treasuredata.client.model.TDBulkImportSession.ImportStatus.PERFORMING;
+import static com.treasuredata.client.model.TDBulkImportSession.ImportStatus.READY;
+import static com.treasuredata.client.model.TDBulkImportSession.ImportStatus.UNKNOWN;
+import static com.treasuredata.client.model.TDBulkImportSession.ImportStatus.UPLOADING;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -114,12 +113,12 @@ public class TestTdOutputPlugin
     {
         doReturn("session_name").when(plugin).buildBulkImportSessionName(any(PluginTask.class), any(ExecSession.class));
         ConfigDiff configDiff = Exec.newConfigDiff().set("last_session", "session_name");
-        doReturn(configDiff).when(plugin).doRun(any(TdApiClient.class), any(Schema.class), any(PluginTask.class), any(OutputPlugin.Control.class));
+        doReturn(configDiff).when(plugin).doRun(any(TDClient.class), any(Schema.class), any(PluginTask.class), any(OutputPlugin.Control.class));
         Schema schema = schema("time", Types.LONG, "c0", Types.STRING, "c1", Types.STRING);
 
         { // auto_create_table is true
             ConfigSource config = this.config.deepCopy().set("auto_create_table", "true");
-            doNothing().when(plugin).createTableIfNotExists(any(TdApiClient.class), anyString(), anyString());
+            doNothing().when(plugin).createTableIfNotExists(any(TDClient.class), anyString(), anyString());
             assertEquals("session_name", plugin.transaction(config, schema, 0, new OutputPlugin.Control()
             {
                 @Override
@@ -132,7 +131,7 @@ public class TestTdOutputPlugin
 
         { // auto_create_table is false
             ConfigSource config = this.config.deepCopy().set("auto_create_table", "false");
-            doNothing().when(plugin).validateTableExists(any(TdApiClient.class), anyString(), anyString());
+            doNothing().when(plugin).validateTableExists(any(TDClient.class), anyString(), anyString());
             assertEquals("session_name", plugin.transaction(config, schema, 0, new OutputPlugin.Control()
             {
                 @Override
@@ -152,8 +151,8 @@ public class TestTdOutputPlugin
         task.setSessionName("session_name");
         task.setLoadTargetTableName("my_table");
         task.setDoUpload(true);
-        doReturn(true).when(plugin).startBulkImportSession(any(TdApiClient.class), anyString(), anyString(), anyString());
-        doNothing().when(plugin).completeBulkImportSession(any(TdApiClient.class), any(Schema.class), any(PluginTask.class), anyInt());
+        doReturn(true).when(plugin).startBulkImportSession(any(TDClient.class), anyString(), anyString(), anyString());
+        doNothing().when(plugin).completeBulkImportSession(any(TDClient.class), any(Schema.class), any(PluginTask.class), anyInt());
         Schema schema = schema("time", Types.LONG, "c0", Types.STRING, "c1", Types.STRING);
 
         ConfigDiff configDiff = plugin.resume(task.dump(), schema, 0, new OutputPlugin.Control()
@@ -175,9 +174,9 @@ public class TestTdOutputPlugin
         task.setSessionName("session_name");
         task.setLoadTargetTableName("my_table");
         task.setDoUpload(true);
-        TdApiClient client = spy(plugin.newTdApiClient(task));
+        TDClient client = spy(plugin.newTDClient(task));
         doNothing().when(client).deleteBulkImportSession(anyString());
-        doReturn(client).when(plugin).newTdApiClient(task);
+        doReturn(client).when(plugin).newTDClient(task);
         Schema schema = schema("time", Types.LONG, "c0", Types.STRING, "c1", Types.STRING);
 
         plugin.cleanup(task.dump(), schema, 0, Lists.newArrayList(Exec.newTaskReport()));
@@ -211,11 +210,11 @@ public class TestTdOutputPlugin
     }
 
     @Test
-    public void newTdApiClient()
+    public void newTDClient()
     {
         { // no proxy setting
             PluginTask task = pluginTask(config);
-            try (TdApiClient client = plugin.newTdApiClient(task)) {
+            try (TDClient client = plugin.newTDClient(task)) {
             }
             // no error happens
         }
@@ -223,7 +222,7 @@ public class TestTdOutputPlugin
         { // proxy setting
             PluginTask task = pluginTask(config.deepCopy()
                     .set("http_proxy", ImmutableMap.of("host", "xxx", "port", "8080")));
-            try (TdApiClient client = plugin.newTdApiClient(task)) {
+            try (TDClient client = plugin.newTDClient(task)) {
             }
             // no error happens
         }
@@ -233,10 +232,10 @@ public class TestTdOutputPlugin
     public void createTableIfNotExists()
     {
         PluginTask task = pluginTask(config);
-        TdApiClient client = spy(plugin.newTdApiClient(task));
+        TDClient client = spy(plugin.newTDClient(task));
 
         { // database exists but table doesn't exist
-            doReturn(null).when(client).createTable(anyString(), anyString());
+            doNothing().when(client).createTable(anyString(), anyString());
             plugin.createTableIfNotExists(client, "my_db", "my_table");
             // no error happens
         }
@@ -249,14 +248,14 @@ public class TestTdOutputPlugin
 
         { // database and table don't exist
             { // createTable -> createDB -> createTable
-                doThrow(notFound()).doReturn(null).when(client).createTable(anyString(), anyString());
-                doReturn(null).when(client).createDatabase(anyString());
+                doThrow(notFound()).doNothing().when(client).createTable(anyString(), anyString());
+                doNothing().when(client).createDatabase(anyString());
                 plugin.createTableIfNotExists(client, "my_db", "my_table");
                 // no error happens
             }
 
             { // createTable -> createDB -> createTable
-                doThrow(notFound()).doReturn(null).when(client).createTable(anyString(), anyString());
+                doThrow(notFound()).doNothing().when(client).createTable(anyString(), anyString());
                 doThrow(conflict()).when(client).createDatabase(anyString());
                 plugin.createTableIfNotExists(client, "my_db", "my_table");
                 // no error happens
@@ -264,7 +263,7 @@ public class TestTdOutputPlugin
 
             { // createTable -> createDB -> createTable
                 doThrow(notFound()).doThrow(conflict()).when(client).createTable(anyString(), anyString());
-                doReturn(null).when(client).createDatabase(anyString());
+                doNothing().when(client).createDatabase(anyString());
                 plugin.createTableIfNotExists(client, "my_db", "my_table");
                 // no error happens
             }
@@ -282,17 +281,17 @@ public class TestTdOutputPlugin
     public void validateTableExists()
     {
         PluginTask task = pluginTask(config);
-        TdApiClient client = spy(plugin.newTdApiClient(task));
-        TDTable table = new TDTable("my_table", TDTableType.LOG, null);
+        TDClient client = spy(plugin.newTDClient(task));
+        TDTable table = newTable("my_table", "[]");
 
         { // table exists
-            doReturn(ImmutableList.of(table)).when(client).getTables(anyString());
+            doReturn(ImmutableList.of(table)).when(client).listTables(anyString());
             plugin.validateTableExists(client, "my_db", "my_table");
             // no error happens
         }
 
         { // table doesn't exist
-            doReturn(ImmutableList.of()).when(client).getTables(anyString());
+            doReturn(ImmutableList.of()).when(client).listTables(anyString());
             try {
                 plugin.validateTableExists(client, "my_db", "my_table");
                 fail();
@@ -303,7 +302,7 @@ public class TestTdOutputPlugin
         }
 
         { // database doesn't exist
-            doThrow(notFound()).when(client).getTables(anyString());
+            doThrow(notFound()).when(client).listTables(anyString());
             try {
                 plugin.validateTableExists(client, "my_db", "my_table");
                 fail();
@@ -332,7 +331,7 @@ public class TestTdOutputPlugin
     public void startBulkImportSession()
     {
         PluginTask task = pluginTask(config);
-        TdApiClient client = spy(plugin.newTdApiClient(task));
+        TDClient client = spy(plugin.newTDClient(task));
         doNothing().when(client).createBulkImportSession(anyString(), anyString(), anyString());
 
         { // status is uploading and unfrozen
@@ -388,12 +387,12 @@ public class TestTdOutputPlugin
         PluginTask task = pluginTask(config);
         Schema schema = schema("c0", Types.LONG);
 
-        doReturn(session(UNKNOWN, false)).when(plugin).waitForStatusChange(any(TdApiClient.class), anyString(), any(ImportStatus.class), any(ImportStatus.class), anyString());
-        doReturn(new HashMap<String, TDColumnType>()).when(plugin).updateSchema(any(TdApiClient.class), any(Schema.class), any(PluginTask.class));
+        doReturn(session(UNKNOWN, false)).when(plugin).waitForStatusChange(any(TDClient.class), anyString(), any(ImportStatus.class), any(ImportStatus.class), anyString());
+        doReturn(new HashMap<String, TDColumnType>()).when(plugin).updateSchema(any(TDClient.class), any(Schema.class), any(PluginTask.class));
 
-        TdApiClient client = spy(plugin.newTdApiClient(task));
+        TDClient client = spy(plugin.newTDClient(task));
         doNothing().when(client).freezeBulkImportSession(anyString());
-        doNothing().when(client).performBulkImportSession(anyString(), anyInt());
+        doNothing().when(client).performBulkImportSession(anyString());
         doNothing().when(client).commitBulkImportSession(anyString());
 
         { // uploading + unfreeze
@@ -454,7 +453,7 @@ public class TestTdOutputPlugin
     public void waitForStatusChange()
     {
         PluginTask task = pluginTask(config);
-        TdApiClient client = spy(plugin.newTdApiClient(task));
+        TDClient client = spy(plugin.newTDClient(task));
 
         { // performing -> ready
             doReturn(session(PERFORMING, false)).doReturn(session(READY, false)).when(client).getBulkImportSession("my_session");
@@ -512,9 +511,14 @@ public class TestTdOutputPlugin
         return spy(new TdOutputPlugin());
     }
 
-    public static TdApiClient tdApiClient(TdOutputPlugin plugin, PluginTask task)
+    public static TDClient tdClient(TdOutputPlugin plugin, PluginTask task)
     {
-        return spy(plugin.newTdApiClient(task));
+        return spy(plugin.newTDClient(task));
+    }
+
+    public static TDTable newTable(String name, String schema)
+    {
+        return new TDTable("", name, TDTableType.LOG, schema, 0, 0, "", "", "", "");
     }
 
     public static FieldWriterSet fieldWriters(Logger log, PluginTask task, Schema schema)
@@ -522,19 +526,19 @@ public class TestTdOutputPlugin
         return spy(new FieldWriterSet(log, task, schema));
     }
 
-    public static RecordWriter recordWriter(PluginTask task, TdApiClient client, FieldWriterSet fieldWriters)
+    public static RecordWriter recordWriter(PluginTask task, TDClient client, FieldWriterSet fieldWriters)
     {
         return spy(new RecordWriter(task, 0, client, fieldWriters));
     }
 
-    static TdApiNotFoundException notFound()
+    static TDClientHttpNotFoundException notFound()
     {
-        return new TdApiNotFoundException(404, "not found".getBytes());
+        return new TDClientHttpNotFoundException("not found");
     }
 
-    static TdApiConflictException conflict()
+    static TDClientHttpConflictException conflict()
     {
-        return new TdApiConflictException(409, "conflict".getBytes());
+        return new TDClientHttpConflictException("conflict");
     }
 
     private static TDBulkImportSession session(ImportStatus status, boolean uploadFrozen)
