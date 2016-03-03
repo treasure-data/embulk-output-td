@@ -1,4 +1,4 @@
-## 0.3.0 - 20XX-XX-XX
+## 0.3.0 - 2016-03-03
 
 * [maintenance] Upgrade embulk v08 [#37](https://github.com/treasure-data/embulk-output-td/pull/37)
 
