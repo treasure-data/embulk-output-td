@@ -1,3 +1,7 @@
+## 0.3.0 - 20XX-XX-XX
+
+* [maintenance] Upgrade embulk v08 [#37](https://github.com/treasure-data/embulk-output-td/pull/37)
+
 ## 0.2.2 - 2016-02-29
 
 * [maintenance] Update a table schema by Embulk's guessed columns if the # of the uploaded record is zero [#36](https://github.com/treasure-data/embulk-output-td/pull/36)
