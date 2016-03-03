@@ -1,7 +1,7 @@
 package org.embulk.output.td;
 
-import org.msgpack.MessagePack;
-import org.msgpack.packer.Packer;
+import org.msgpack.core.MessagePack;
+import org.msgpack.core.MessagePacker;
 
 import java.io.BufferedOutputStream;
 import java.io.Closeable;
@@ -60,16 +60,16 @@ public class MsgpackGZFileBuilder
     private final DataSizeFilter out;
     private final GZIPOutputStream gzout;
 
-    private Packer packer;
+    private MessagePacker packer;
     private long recordCount;
 
-    public MsgpackGZFileBuilder(MessagePack msgpack, File file)
+    public MsgpackGZFileBuilder(File file)
             throws IOException
     {
         this.file = checkNotNull(file);
         this.out = new DataSizeFilter(new BufferedOutputStream(new FileOutputStream(file)));
         this.gzout = new GZIPOutputStream(this.out);
-        this.packer = msgpack.createPacker(this.gzout);
+        this.packer = MessagePack.newDefaultPacker(this.gzout);
 
         this.recordCount = 0;
     }
@@ -118,43 +118,42 @@ public class MsgpackGZFileBuilder
     public void writeNil()
             throws IOException
     {
-        packer.writeNil();
+        packer.packNil();
     }
 
     public void writeMapBegin(int size)
             throws IOException
     {
-        packer.writeMapBegin(size);
+        packer.packMapHeader(size);
     }
 
     public void writeMapEnd()
             throws IOException
     {
-        packer.writeMapEnd();
         recordCount++;
     }
 
     public void writeString(String v)
             throws IOException
     {
-        packer.write(v);
+        packer.packString(v);
     }
 
     public void writeBoolean(boolean v)
             throws IOException
     {
-        packer.write(v);
+        packer.packBoolean(v);
     }
 
     public void writeLong(long v)
             throws IOException
     {
-        packer.write(v);
+        packer.packLong(v);
     }
 
     public void writeDouble(double v)
             throws IOException
     {
-        packer.write(v);
+        packer.packDouble(v);
     }
 }

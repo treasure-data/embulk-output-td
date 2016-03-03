@@ -3,7 +3,7 @@ package org.embulk.output.td;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Stopwatch;
 import com.google.common.base.Throwables;
-import com.treasuredata.api.TdApiClient;
+import com.treasuredata.client.TDClient;
 import org.embulk.config.TaskReport;
 import org.embulk.output.td.writer.FieldWriterSet;
 import org.embulk.spi.Exec;
@@ -11,7 +11,6 @@ import org.embulk.spi.Page;
 import org.embulk.spi.PageReader;
 import org.embulk.spi.Schema;
 import org.embulk.spi.TransactionalPageOutput;
-import org.msgpack.MessagePack;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -28,11 +27,10 @@ public class RecordWriter
         implements TransactionalPageOutput
 {
     private final Logger log;
-    private final TdApiClient client;
+    private final TDClient client;
     private final String sessionName;
     private final int taskIndex;
 
-    private final MessagePack msgpack;
     private final FieldWriterSet fieldWriters;
     private final File tempDir;
 
@@ -44,14 +42,13 @@ public class RecordWriter
     private final int uploadConcurrency;
     private final long fileSplitSize; // unit: kb
 
-    public RecordWriter(TdOutputPlugin.PluginTask task, int taskIndex, TdApiClient client, FieldWriterSet fieldWriters)
+    public RecordWriter(TdOutputPlugin.PluginTask task, int taskIndex, TDClient client, FieldWriterSet fieldWriters)
     {
         this.log = Exec.getLogger(getClass());
         this.client = checkNotNull(client);
         this.sessionName = task.getSessionName();
         this.taskIndex = taskIndex;
 
-        this.msgpack = new MessagePack();
         this.fieldWriters = fieldWriters;
         this.tempDir = new File(task.getTempDir());
         this.executor = new FinalizableExecutorService();
@@ -77,7 +74,7 @@ public class RecordWriter
     {
         String prefix = String.format("%s-", sessionName);
         File tempFile = File.createTempFile(prefix, ".msgpack.gz", tempDir);
-        this.builder = new MsgpackGZFileBuilder(msgpack, tempFile);
+        this.builder = new MsgpackGZFileBuilder(tempFile);
     }
 
     @VisibleForTesting

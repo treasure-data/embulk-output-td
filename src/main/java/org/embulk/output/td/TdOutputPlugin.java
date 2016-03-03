@@ -14,23 +14,23 @@ import javax.validation.constraints.Min;
 import javax.validation.constraints.Max;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import com.treasuredata.api.TdApiClient;
-import com.treasuredata.api.TdApiClientConfig;
-import com.treasuredata.api.TdApiClientConfig.HttpProxyConfig;
-import com.treasuredata.api.TdApiConflictException;
-import com.treasuredata.api.TdApiNotFoundException;
-import com.treasuredata.api.model.TDBulkImportSession;
-import com.treasuredata.api.model.TDBulkImportSession.ImportStatus;
-import com.treasuredata.api.model.TDTable;
-import com.treasuredata.api.model.TDColumn;
-import com.treasuredata.api.model.TDColumnType;
-import com.treasuredata.api.model.TDPrimitiveColumnType;
+import com.treasuredata.client.ProxyConfig;
+import com.treasuredata.client.TDClient;
+import com.treasuredata.client.TDClientBuilder;
+import com.treasuredata.client.TDClientHttpConflictException;
+import com.treasuredata.client.TDClientHttpNotFoundException;
+import com.treasuredata.client.model.TDBulkImportSession;
+import com.treasuredata.client.model.TDBulkImportSession.ImportStatus;
+import com.treasuredata.client.model.TDColumn;
+import com.treasuredata.client.model.TDColumnType;
+import com.treasuredata.client.model.TDTable;
 import org.embulk.config.TaskReport;
 import org.embulk.config.Config;
 import org.embulk.config.ConfigDefault;
@@ -51,9 +51,9 @@ import org.embulk.spi.TransactionalPageOutput;
 import org.embulk.spi.time.Timestamp;
 import org.embulk.spi.time.TimestampFormatter;
 import org.joda.time.format.DateTimeFormat;
-import org.msgpack.MessagePack;
-import org.msgpack.unpacker.Unpacker;
-import org.msgpack.unpacker.UnpackerIterator;
+import org.msgpack.core.MessagePack;
+import org.msgpack.core.MessageUnpacker;
+import org.msgpack.value.Value;
 import org.slf4j.Logger;
 
 public class TdOutputPlugin
@@ -324,7 +324,7 @@ public class TdOutputPlugin
         // generate session name
         task.setSessionName(buildBulkImportSessionName(task, Exec.session()));
 
-        try (TdApiClient client = newTdApiClient(task)) {
+        try (TDClient client = newTDClient(task)) {
             String databaseName = task.getDatabase();
             String tableName = task.getTable();
 
@@ -361,13 +361,13 @@ public class TdOutputPlugin
             OutputPlugin.Control control)
     {
         PluginTask task = taskSource.loadTask(PluginTask.class);
-        try (TdApiClient client = newTdApiClient(task)) {
+        try (TDClient client = newTDClient(task)) {
             return doRun(client, schema, task, control);
         }
     }
 
     @VisibleForTesting
-    ConfigDiff doRun(TdApiClient client, Schema schema, PluginTask task, OutputPlugin.Control control)
+    ConfigDiff doRun(TDClient client, Schema schema, PluginTask task, OutputPlugin.Control control)
     {
         boolean doUpload = startBulkImportSession(client, task.getSessionName(), task.getDatabase(), task.getLoadTargetTableName());
         task.setDoUpload(doUpload);
@@ -395,7 +395,7 @@ public class TdOutputPlugin
             List<TaskReport> successTaskReports)
     {
         PluginTask task = taskSource.loadTask(PluginTask.class);
-        try (TdApiClient client = newTdApiClient(task)) {
+        try (TDClient client = newTDClient(task)) {
             String sessionName = task.getSessionName();
             log.info("Deleting bulk import session '{}'", sessionName);
             client.deleteBulkImportSession(sessionName);
@@ -416,65 +416,52 @@ public class TdOutputPlugin
     }
 
     @VisibleForTesting
-    public TdApiClient newTdApiClient(final PluginTask task)
+    public TDClient newTDClient(final PluginTask task)
     {
-        Optional<HttpProxyConfig> httpProxyConfig = newHttpProxyConfig(task.getHttpProxy());
-        TdApiClientConfig config = new TdApiClientConfig(task.getEndpoint(), task.getUseSsl(), httpProxyConfig);
-        TdApiClient client = new TdApiClient(task.getApiKey(), config);
-        try {
-            client.start();
+        TDClientBuilder builder = TDClient.newBuilder();
+        builder.setApiKey(task.getApiKey());
+        builder.setEndpoint(task.getEndpoint());
+        builder.setUseSSL(task.getUseSsl());
+        if (task.getHttpProxy().isPresent()) {
+            HttpProxyTask proxyTask = task.getHttpProxy().get();
+            builder.setProxy(new ProxyConfig(proxyTask.getHost(), proxyTask.getPort(), proxyTask.getUseSsl(),
+                    Optional.<String>absent(), Optional.<String>absent()));
         }
-        catch (IOException e) {
-            throw Throwables.propagate(e);
-        }
-        return client;
-    }
-
-    private Optional<HttpProxyConfig> newHttpProxyConfig(Optional<HttpProxyTask> task)
-    {
-        Optional<HttpProxyConfig> httpProxyConfig;
-        if (task.isPresent()) {
-            HttpProxyTask pt = task.get();
-            httpProxyConfig = Optional.of(new HttpProxyConfig(pt.getHost(), pt.getPort(), pt.getUseSsl()));
-        }
-        else {
-            httpProxyConfig = Optional.absent();
-        }
-        return httpProxyConfig;
+        return builder.build();
     }
 
     @VisibleForTesting
-    void createTableIfNotExists(TdApiClient client, String databaseName, String tableName)
+    void createTableIfNotExists(TDClient client, String databaseName, String tableName)
     {
         log.debug("Creating table \"{}\".\"{}\" if not exists", databaseName, tableName);
         try {
             client.createTable(databaseName, tableName);
             log.debug("Created table \"{}\".\"{}\"", databaseName, tableName);
         }
-        catch (TdApiNotFoundException e) {
+        catch (TDClientHttpNotFoundException e) {
             try {
                 client.createDatabase(databaseName);
                 log.debug("Created database \"{}\"", databaseName);
             }
-            catch (TdApiConflictException ex) {
+            catch (TDClientHttpConflictException ex) {
                 // ignorable error
             }
             try {
                 client.createTable(databaseName, tableName);
                 log.debug("Created table \"{}\".\"{}\"", databaseName, tableName);
             }
-            catch (TdApiConflictException exe) {
+            catch (TDClientHttpConflictException exe) {
                 // ignorable error
             }
         }
-        catch (TdApiConflictException e) {
+        catch (TDClientHttpConflictException e) {
             // ignorable error
         }
     }
 
     @VisibleForTesting
-    String createTemporaryTableWithPrefix(TdApiClient client, String databaseName, String tablePrefix)
-            throws TdApiConflictException
+    String createTemporaryTableWithPrefix(TDClient client, String databaseName, String tablePrefix)
+            throws TDClientHttpConflictException
     {
         String tableName = tablePrefix;
         while (true) {
@@ -484,7 +471,7 @@ public class TdOutputPlugin
                 log.debug("Created temporal table \"{}\".\"{}\"", databaseName, tableName);
                 return tableName;
             }
-            catch (TdApiConflictException e) {
+            catch (TDClientHttpConflictException e) {
                 log.debug("\"{}\".\"{}\" table already exists. Renaming temporal table.", databaseName, tableName);
                 tableName += "_";
             }
@@ -492,17 +479,17 @@ public class TdOutputPlugin
     }
 
     @VisibleForTesting
-    void validateTableExists(TdApiClient client, String databaseName, String tableName)
+    void validateTableExists(TDClient client, String databaseName, String tableName)
     {
         try {
-            for (TDTable table : client.getTables(databaseName)) {
+            for (TDTable table : client.listTables(databaseName)) {
                 if (table.getName().equals(tableName)) {
                     return;
                 }
             }
             throw new ConfigException(String.format("Table \"%s\".\"%s\" doesn't exist", databaseName, tableName));
         }
-        catch (TdApiNotFoundException ex) {
+        catch (TDClientHttpNotFoundException ex) {
             throw new ConfigException(String.format("Database \"%s\" doesn't exist", databaseName), ex);
         }
     }
@@ -523,7 +510,7 @@ public class TdOutputPlugin
 
     // return false if all files are already uploaded
     @VisibleForTesting
-    boolean startBulkImportSession(TdApiClient client,
+    boolean startBulkImportSession(TDClient client,
             String sessionName, String databaseName, String tableName)
     {
         log.info("Create bulk_import session {}", sessionName);
@@ -531,7 +518,7 @@ public class TdOutputPlugin
         try {
             client.createBulkImportSession(sessionName, databaseName, tableName);
         }
-        catch (TdApiConflictException ex) {
+        catch (TDClientHttpConflictException ex) {
             // ignorable error
         }
         session = client.getBulkImportSession(sessionName);
@@ -539,7 +526,7 @@ public class TdOutputPlugin
 
         switch (session.getStatus()) {
         case UPLOADING:
-            if (session.getUploadFrozen()) {
+            if (session.isUploadFrozen()) {
                 return false;
             }
             return true;
@@ -558,24 +545,24 @@ public class TdOutputPlugin
     }
 
     @VisibleForTesting
-    void completeBulkImportSession(TdApiClient client, Schema schema, PluginTask task, int priority)
+    void completeBulkImportSession(TDClient client, Schema schema, PluginTask task, int priority)
     {
         String sessionName = task.getSessionName();
         TDBulkImportSession session = client.getBulkImportSession(sessionName);
 
         switch (session.getStatus()) {
         case UPLOADING:
-            if (!session.getUploadFrozen()) {
+            if (!session.isUploadFrozen()) {
                 // freeze
                 try {
                     client.freezeBulkImportSession(sessionName);
                 }
-                catch (TdApiConflictException e) {
+                catch (TDClientHttpConflictException e) {
                     // ignorable error
                 }
             }
             // perform
-            client.performBulkImportSession(sessionName, priority);
+            client.performBulkImportSession(sessionName); // TODO use priority
 
             // pass
         case PERFORMING:
@@ -629,7 +616,7 @@ public class TdOutputPlugin
         }
     }
 
-    Map<String, TDColumnType> updateSchema(TdApiClient client, Schema inputSchema, PluginTask task)
+    Map<String, TDColumnType> updateSchema(TDClient client, Schema inputSchema, PluginTask task)
     {
         String databaseName = task.getDatabase();
         TDTable table = findTable(client, databaseName, task.getTable());
@@ -638,27 +625,32 @@ public class TdOutputPlugin
         inputSchema.visitColumns(new ColumnVisitor() {
             public void booleanColumn(Column column)
             {
-                guessedSchema.put(column.getName(), TDPrimitiveColumnType.LONG);
+                guessedSchema.put(column.getName(), TDColumnType.LONG);
             }
 
             public void longColumn(Column column)
             {
-                guessedSchema.put(column.getName(), TDPrimitiveColumnType.LONG);;
+                guessedSchema.put(column.getName(), TDColumnType.LONG);;
             }
 
             public void doubleColumn(Column column)
             {
-                guessedSchema.put(column.getName(), TDPrimitiveColumnType.DOUBLE);
+                guessedSchema.put(column.getName(), TDColumnType.DOUBLE);
             }
 
             public void stringColumn(Column column)
             {
-                guessedSchema.put(column.getName(), TDPrimitiveColumnType.STRING);
+                guessedSchema.put(column.getName(), TDColumnType.STRING);
             }
 
             public void timestampColumn(Column column)
             {
-                guessedSchema.put(column.getName(), TDPrimitiveColumnType.STRING);
+                guessedSchema.put(column.getName(), TDColumnType.STRING);
+            }
+
+            public void jsonColumn(Column column)
+            {
+                guessedSchema.put(column.getName(), TDColumnType.STRING);
             }
         });
 
@@ -693,13 +685,13 @@ public class TdOutputPlugin
             newSchema.add(new TDColumn(pair.getKey(), pair.getValue(), key.getBytes(StandardCharsets.UTF_8)));
         }
 
-        client.updateSchema(databaseName, task.getLoadTargetTableName(), newSchema);
+        client.updateTableSchema(databaseName, task.getLoadTargetTableName(), newSchema);
         return guessedSchema;
     }
 
-    private static TDTable findTable(TdApiClient client, String databaseName, String tableName)
+    private static TDTable findTable(TDClient client, String databaseName, String tableName)
     {
-        for (TDTable table : client.getTables(databaseName)) {
+        for (TDTable table : client.listTables(databaseName)) {
             if (table.getName().equals(tableName)) {
                 return table;
             }
@@ -718,34 +710,47 @@ public class TdOutputPlugin
         return COLUMN_NAME_SQUASH_PATTERN.matcher(origName).replaceAll("_").toLowerCase();
     }
 
-    void showBulkImportErrorRecords(TdApiClient client, String sessionName, int recordCountLimit)
+    void showBulkImportErrorRecords(TDClient client, String sessionName, final int recordCountLimit)
     {
         log.info("Show {} error records", recordCountLimit);
-        try (InputStream in = client.getBulkImportErrorRecords(sessionName)) {
-            Unpacker unpacker = new MessagePack().createUnpacker(new GZIPInputStream(in));
-            UnpackerIterator records = unpacker.iterator();
-            for (int i = 0; i < recordCountLimit; i++) {
-                log.info("    {}", records.next());
+        client.getBulkImportErrorRecords(sessionName, new Function<InputStream, Void>()
+        {
+            @Override
+            public Void apply(InputStream input)
+            {
+                int errorRecordCount = 0;
+                try (MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(new GZIPInputStream(input))) {
+                    while (unpacker.hasNext()) {
+                        Value v = unpacker.unpackValue();
+                        log.info("    {}", v.toJson());
+                        errorRecordCount += 1;
+
+                        if (errorRecordCount >= recordCountLimit) {
+                            break;
+                        }
+                    }
+                }
+                catch (IOException ignored) {
+                    log.info("Stop downloading error records");
+                }
+                return null;
             }
-        }
-        catch (Exception ignored) {
-            log.info("Stop downloading error records", ignored);
-        }
+        });
     }
 
     @VisibleForTesting
-    TDBulkImportSession waitForStatusChange(TdApiClient client, String sessionName,
+    TDBulkImportSession waitForStatusChange(TDClient client, String sessionName,
             ImportStatus current, ImportStatus expecting, String operation)
     {
         TDBulkImportSession importSession;
         while (true) {
             importSession = client.getBulkImportSession(sessionName);
 
-            if (importSession.is(expecting)) {
+            if (importSession.getStatus() == expecting) {
                 return importSession;
 
             }
-            else if (importSession.is(current)) {
+            else if (importSession.getStatus() == current) {
                 // in progress
 
             }
@@ -763,7 +768,7 @@ public class TdOutputPlugin
     }
 
     @VisibleForTesting
-    void renameTable(TdApiClient client, String databaseName, String oldName, String newName)
+    void renameTable(TDClient client, String databaseName, String oldName, String newName)
     {
         log.debug("Renaming table \"{}\".\"{}\" to \"{}\"", databaseName, oldName, newName);
         client.renameTable(databaseName, oldName, newName, true);
@@ -777,7 +782,7 @@ public class TdOutputPlugin
         RecordWriter closeLater = null;
         try {
             FieldWriterSet fieldWriters = new FieldWriterSet(log, task, schema);
-            closeLater = new RecordWriter(task, taskIndex, newTdApiClient(task), fieldWriters);
+            closeLater = new RecordWriter(task, taskIndex, newTDClient(task), fieldWriters);
             RecordWriter recordWriter = closeLater;
             recordWriter.open(schema);
             closeLater = null;
