@@ -1,3 +1,7 @@
+## 0.3.1 - 2016-04-25
+
+* [maintenance] Fix bug TransactionalPageOutput.flush method throws NullPointerException
+
 ## 0.3.0 - 2016-03-03
 
 * [maintenance] Upgrade embulk v08 [#37](https://github.com/treasure-data/embulk-output-td/pull/37)
