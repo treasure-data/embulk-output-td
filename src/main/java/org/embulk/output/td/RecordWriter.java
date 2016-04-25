@@ -106,7 +106,7 @@ public class RecordWriter
 
     public void flush() throws IOException
     {
-        if (builder.getRecordCount() > 0) {
+        if (builder != null && builder.getRecordCount() > 0) {
             builder.finish();
 
             log.info("{uploading: {rows: {}, size: {} bytes (compressed)}}",
