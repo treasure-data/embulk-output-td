@@ -57,7 +57,7 @@ public class TestRecordWriter
                 "_c2", Types.BOOLEAN, "_c3", Types.DOUBLE, "_c4", Types.TIMESTAMP);
 
         plugin = plugin();
-        task = pluginTask(config().set("session_name", "my_session"));
+        task = pluginTask(config().set("session_name", "my_session").set("tmpdir", plugin.getEnvironmentTempDirectory()));
     }
 
     @Test
@@ -192,7 +192,11 @@ public class TestRecordWriter
     {
         schema = schema("_c0", Types.LONG, "_c1", Types.STRING,
                 "_c2", Types.BOOLEAN, "_c3", Types.DOUBLE, "_c4", Types.TIMESTAMP);
-        task = pluginTask(config().set("session_name", "my_session").set("time_value", ImmutableMap.of("from", 0L, "to", 0L)));
+        task = pluginTask(config()
+                .set("session_name", "my_session")
+                .set("time_value", ImmutableMap.of("from", 0L, "to", 0L))
+                .set("tmpdir", plugin.getEnvironmentTempDirectory())
+        );
         recordWriter = recordWriter(task, tdClient(plugin, task), fieldWriters(log, task, schema));
 
         try {

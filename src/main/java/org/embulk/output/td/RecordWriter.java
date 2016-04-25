@@ -50,7 +50,7 @@ public class RecordWriter
         this.taskIndex = taskIndex;
 
         this.fieldWriters = fieldWriters;
-        this.tempDir = new File(task.getTempDir());
+        this.tempDir = new File(task.getTempDir().get());
         this.executor = new FinalizableExecutorService();
         this.uploadConcurrency = task.getUploadConcurrency();
         this.fileSplitSize = task.getFileSplitSize() * 1024;

@@ -1,5 +1,6 @@
 package org.embulk.output.td;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -118,8 +119,9 @@ public class TdOutputPlugin
         public UnixTimestampUnit getUnixTimestampUnit();
 
         @Config("tmpdir")
-        @ConfigDefault("\"/tmp\"")
-        public String getTempDir();
+        @ConfigDefault("null")
+        public Optional<String> getTempDir();
+        public void setTempDir(String dir);
 
         @Config("upload_concurrency")
         @ConfigDefault("2")
@@ -323,6 +325,10 @@ public class TdOutputPlugin
 
         // generate session name
         task.setSessionName(buildBulkImportSessionName(task, Exec.session()));
+
+        if (!task.getTempDir().isPresent()) {
+            task.setTempDir(getEnvironmentTempDirectory());
+        }
 
         try (TDClient client = newTDClient(task)) {
             String databaseName = task.getDatabase();
@@ -797,5 +803,11 @@ public class TdOutputPlugin
                 closeLater.close();
             }
         }
+    }
+
+    @VisibleForTesting
+    String getEnvironmentTempDirectory()
+    {
+        return System.getProperty("java.io.tmpdir");
     }
 }
