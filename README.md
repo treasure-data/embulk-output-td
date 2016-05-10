@@ -21,7 +21,7 @@ TODO: Write short description here
 - **session**: bulk_import session name (string, optional)
 - **time_column**: user-defined time column (string, optional)
 - **unix_timestamp_unit**: if type of "time" or **time_column** is long, it's considered unix timestamp. This option specify its unit in sec, milli, micro or nano (enum, default: `sec`)
-- **tmpdir**: temporal directory
+- **tmpdir**: temporal directory (string, optional) if set to null, plugin will use directory that could get from System.property
 - **upload_concurrency**: upload concurrency (int, default=2). max concurrency is 8.
 - **file_split_size**: split size (long, default=16384 (16MB)).
 - **stop_on_invalid_record**: stop bulk load transaction if a file includes invalid record (such as invalid timestamp) (boolean, default=false).
