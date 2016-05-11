@@ -80,6 +80,17 @@ public class TestFieldWriterSet
                 assertTrue(t instanceof ConfigException);
             }
         }
+
+        { // if both of time_offset and time_value are specified, it throws ConfigError.
+            schema = schema("_c0", Types.STRING, "_c1", Types.LONG);
+            try {
+                new FieldWriterSet(log, pluginTask(config.deepCopy().set("time_value", ImmutableMap.of("from", 0L, "to", 0L)).set("time_offset", ImmutableMap.of("value", 100L, "unit", "sec"))), schema);
+                fail();
+            }
+            catch (Throwable t) {
+                assertTrue(t instanceof ConfigException);
+            }
+        }
     }
 
     @Test

@@ -10,17 +10,19 @@ public class UnixTimestampLongFieldWriter
         extends FieldWriter
 {
     private final int fractionUnit;
+    private final long offset;
 
-    UnixTimestampLongFieldWriter(String keyName, int fractionUnit)
+    UnixTimestampLongFieldWriter(String keyName, int fractionUnit, long offset)
     {
         super(keyName);
         this.fractionUnit = fractionUnit;
+        this.offset = offset;
     }
 
     @Override
     public void writeValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
             throws IOException
     {
-        builder.writeLong(reader.getLong(column) / fractionUnit);
+        builder.writeLong((reader.getLong(column) / fractionUnit) + offset);
     }
 }

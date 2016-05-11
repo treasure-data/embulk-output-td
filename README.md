@@ -32,6 +32,9 @@ TODO: Write short description here
 - **column_options**: advanced: a key-value pairs where key is a column name and value is options for the column.
   - **timezone**: If input column type (embulk type) is timestamp, this plugin needs to format the timestamp value into a SQL string. In this cases, this timezone option is used to control the timezone. (string, value of default_timezone option is used by default)
   - **format**: If input column type (embulk type) is timestamp, this plugin needs to format the timestamp value into a string. This timestamp_format option is used to control the format of the timestamp. (string, value of default_timestamp_format option is used by default)
+- **time_offset**: advanced: timestamp offset of "time" or **time_column**
+  - **value**: timestamp offset value (long, default=0)
+  - **unit**: offset value unit in sec, milli, micro or nano (enum, default='sec')
 
 ## Modes
 * **append**:

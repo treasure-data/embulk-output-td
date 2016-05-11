@@ -9,15 +9,18 @@ import java.io.IOException;
 public class TimestampLongFieldWriter
         extends FieldWriter
 {
-    public TimestampLongFieldWriter(String keyName)
+    private final long offset;
+
+    public TimestampLongFieldWriter(String keyName, long offset)
     {
         super(keyName);
+        this.offset = offset;
     }
 
     @Override
     public void writeValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
             throws IOException
     {
-        builder.writeLong(reader.getTimestamp(column).getEpochSecond());
+        builder.writeLong(reader.getTimestamp(column).getEpochSecond() + offset);
     }
 }

@@ -12,10 +12,10 @@ public class UnixTimestampFieldDuplicator
     private final IFieldWriter nextWriter;
     private final UnixTimestampLongFieldWriter timeFieldWriter;
 
-    public UnixTimestampFieldDuplicator(IFieldWriter nextWriter, String duplicateKeyName, int fractionUnit)
+    public UnixTimestampFieldDuplicator(IFieldWriter nextWriter, String duplicateKeyName, int fractionUnit, long offset)
     {
         this.nextWriter = nextWriter;
-        timeFieldWriter = new UnixTimestampLongFieldWriter(duplicateKeyName, fractionUnit);
+        timeFieldWriter = new UnixTimestampLongFieldWriter(duplicateKeyName, fractionUnit, offset);
     }
 
     public void writeKeyValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)

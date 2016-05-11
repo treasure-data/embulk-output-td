@@ -6,9 +6,9 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import org.embulk.config.ConfigException;
-import org.embulk.config.ConfigSource;
 import org.embulk.output.td.TdOutputPlugin;
 import org.embulk.output.td.TdOutputPlugin.ConvertTimestampType;
+import org.embulk.output.td.TimeOffsetConfig;
 import org.embulk.output.td.TimeValueConfig;
 import org.embulk.output.td.TimeValueGenerator;
 import org.embulk.spi.Column;
@@ -46,10 +46,15 @@ public class FieldWriterSet
         Optional<String> userDefinedPrimaryKeySourceColumnName = task.getTimeColumn();
         ConvertTimestampType convertTimestampType = task.getConvertTimestampType();
         Optional<TimeValueConfig> timeValueConfig = task.getTimeValue();
+        Optional<TimeOffsetConfig> timeOffsetConfig = task.getTimeOffset();
         if (timeValueConfig.isPresent() && userDefinedPrimaryKeySourceColumnName.isPresent()) {
             throw new ConfigException("Setting both time_column and time_value is invalid");
         }
+        if (timeValueConfig.isPresent() && timeOffsetConfig.isPresent()) {
+            throw new ConfigException("Setting both time_value and time_offset is invalid");
+        }
 
+        long timeOffset = timeOffsetConfig.isPresent() ? timeOffsetConfig.get().getValue() / timeOffsetConfig.get().getUnit().getFractionUnit() : 0L;
         boolean foundPrimaryKey = false;
         int duplicatePrimaryKeySourceIndex = -1;
 
@@ -106,11 +111,11 @@ public class FieldWriterSet
                         if (task.getUnixTimestampUnit() != TdOutputPlugin.UnixTimestampUnit.SEC) {
                             log.warn("time column is converted from {} to seconds", task.getUnixTimestampUnit());
                         }
-                        writer = new UnixTimestampLongFieldWriter(columnName, task.getUnixTimestampUnit().getFractionUnit());
+                        writer = new UnixTimestampLongFieldWriter(columnName, task.getUnixTimestampUnit().getFractionUnit(), timeOffset);
                         foundPrimaryKey = true;
                     }
                     else if (columnType instanceof TimestampType) {
-                        writer = new TimestampLongFieldWriter(columnName);
+                        writer = new TimestampLongFieldWriter(columnName, timeOffset);
                         foundPrimaryKey = true;
                     }
                     else {
@@ -163,13 +168,13 @@ public class FieldWriterSet
                 log.info("Duplicating {}:{} column (unix timestamp {}) to 'time' column as seconds for the data partitioning",
                         columnName, columnType, task.getUnixTimestampUnit());
                 IFieldWriter fw = new LongFieldWriter(columnName);
-                writer = new UnixTimestampFieldDuplicator(fw, "time", task.getUnixTimestampUnit().getFractionUnit());
+                writer = new UnixTimestampFieldDuplicator(fw, "time", task.getUnixTimestampUnit().getFractionUnit(), timeOffset);
             }
             else if (columnType instanceof TimestampType) {
                 log.info("Duplicating {}:{} column to 'time' column as seconds for the data partitioning",
                         columnName, columnType);
-                IFieldWriter fw = newSimpleTimestampFieldWriter(columnName, columnType, convertTimestampType, timestampFormatters[duplicatePrimaryKeySourceIndex]);
-                writer = new TimestampFieldLongDuplicator(fw, "time");
+                IFieldWriter fw = newSimpleTimestampFieldWriter(columnName, columnType, convertTimestampType, timeOffset, timestampFormatters[duplicatePrimaryKeySourceIndex]);
+                writer = new TimestampFieldLongDuplicator(fw, "time", timeOffset);
             }
             else {
                 throw new ConfigException(String.format("Type of '%s' column must be long or timestamp but got %s",
@@ -237,7 +242,7 @@ public class FieldWriterSet
             return new StringFieldWriter(columnName);
         }
         else if (columnType instanceof TimestampType) {
-            return newSimpleTimestampFieldWriter(columnName, columnType, convertTimestampType, timestampFormatter);
+            return newSimpleTimestampFieldWriter(columnName, columnType, convertTimestampType, 0L, timestampFormatter);
         }
         else if (columnType instanceof JsonType) {
             return new JsonFieldWriter(columnName);
@@ -247,14 +252,14 @@ public class FieldWriterSet
         }
     }
 
-    private static FieldWriter newSimpleTimestampFieldWriter(String columnName, Type columnType, ConvertTimestampType convertTimestampType, TimestampFormatter timestampFormatter)
+    private static FieldWriter newSimpleTimestampFieldWriter(String columnName, Type columnType, ConvertTimestampType convertTimestampType, long timeOffset, TimestampFormatter timestampFormatter)
     {
         switch (convertTimestampType) {
         case STRING:
-            return new TimestampStringFieldWriter(timestampFormatter, columnName);
+            return new TimestampStringFieldWriter(timestampFormatter, columnName, timeOffset);
 
         case SEC:
-            return new TimestampLongFieldWriter(columnName);
+            return new TimestampLongFieldWriter(columnName, timeOffset);
 
         default:
             // Thread of control doesn't come here but, just in case, it throws ConfigException.

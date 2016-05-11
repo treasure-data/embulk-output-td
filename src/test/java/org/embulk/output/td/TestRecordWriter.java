@@ -232,6 +232,52 @@ public class TestRecordWriter
     }
 
     @Test
+    public void checkGeneratedTimeOffsetByOption()
+            throws Exception
+    {
+        schema = schema("_c0", Types.LONG, "_c1", Types.STRING,
+                "_c2", Types.BOOLEAN, "_c3", Types.DOUBLE, "_c4", Types.TIMESTAMP);
+        task = pluginTask(config()
+                .set("session_name", "my_session")
+                .set("time_column", "_c4")
+                .set("time_offset", ImmutableMap.of("value", 86400L, "unit", "sec"))
+                .set("tmpdir", plugin.getEnvironmentTempDirectory())
+        );
+        recordWriter = recordWriter(task, tdClient(plugin, task), fieldWriters(log, task, schema));
+
+        try {
+            recordWriter.open(schema);
+
+            // values are not null
+            for (Page page : PageTestUtils.buildPage(runtime.getBufferAllocator(), schema,
+                    0L, "v", true, 0.0, Timestamp.ofEpochSecond(1442595600L))) {
+                recordWriter.add(page);
+            }
+
+            MsgpackGZFileBuilder builder = recordWriter.getBuilder();
+            builder.finish();
+
+            // record count 1
+            assertEquals(1, builder.getRecordCount());
+
+            MessageUnpacker u = MessagePack.newDefaultUnpacker(new GZIPInputStream(new FileInputStream(builder.getFile())));
+            Map<Value, Value> v = u.unpackValue().asMapValue().map();
+
+            // compare actual values
+            assertEquals(1442595600L + 86400L, v.get(newString("time")).asIntegerValue().toLong());
+            assertEquals(0L, v.get(newString("_c0")).asIntegerValue().toLong());
+            assertEquals("v", v.get(newString("_c1")).asStringValue().toString());
+            assertEquals(true, v.get(newString("_c2")).asBooleanValue().getBoolean());
+            assertEquals(0.0, v.get(newString("_c3")).asFloatValue().toFloat(), 0.000001);
+            assertEquals("2015-09-19 17:00:00.000", v.get(newString("_c4")).asStringValue().toString());
+
+        }
+        finally {
+            recordWriter.close();
+        }
+    }
+
+    @Test
     public void doAbortNorthing()
     {
         recordWriter = recordWriter(task, tdClient(plugin, task), fieldWriters(log, task, schema));

@@ -13,10 +13,10 @@ public class TimestampFieldLongDuplicator
     private final IFieldWriter nextWriter;
     private final TimestampLongFieldWriter timeFieldWriter;
 
-    public TimestampFieldLongDuplicator(IFieldWriter nextWriter, String duplicateKeyName)
+    public TimestampFieldLongDuplicator(IFieldWriter nextWriter, String duplicateKeyName, long offset)
     {
         this.nextWriter = nextWriter;
-        timeFieldWriter = new TimestampLongFieldWriter(duplicateKeyName);
+        timeFieldWriter = new TimestampLongFieldWriter(duplicateKeyName, offset);
     }
 
     public void writeKeyValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)

@@ -11,17 +11,19 @@ public class TimestampStringFieldWriter
         extends FieldWriter
 {
     private final TimestampFormatter formatter;
+    private final long offset;
 
-    public TimestampStringFieldWriter(TimestampFormatter formatter, String keyName)
+    public TimestampStringFieldWriter(TimestampFormatter formatter, String keyName, long offset)
     {
         super(keyName);
         this.formatter = formatter;
+        this.offset = offset;
     }
 
     @Override
     public void writeValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
             throws IOException
     {
-        builder.writeString(formatter.format(reader.getTimestamp(column)));
+        builder.writeString(formatter.format(reader.getTimestamp(column, offset)));
     }
 }
