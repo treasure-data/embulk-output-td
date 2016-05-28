@@ -1,3 +1,7 @@
+## 0.3.3 - 2016-05-27
+
+* [maintenance] Upgrade td-client v0.7.19 [#42](https://github.com/treasure-data/embulk-output-td/pull/42)
+
 ## 0.3.2 - 2016-05-09
 
 * [maintenance] Get temporary directory path from System.property('java.io.tmpdir') [#39](https://github.com/treasure-data/embulk-output-td/pull/39)
