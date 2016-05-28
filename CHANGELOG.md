@@ -1,3 +1,7 @@
+## 0.3.2 - 2016-05-09
+
+* [maintenance] Get temporary directory path from System.property('java.io.tmpdir') [#39](https://github.com/treasure-data/embulk-output-td/pull/39)
+
 ## 0.3.1 - 2016-04-25
 
 * [maintenance] Fix bug TransactionalPageOutput.flush method throws NullPointerException
