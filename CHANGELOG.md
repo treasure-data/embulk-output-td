@@ -1,3 +1,7 @@
+## 0.3.4 - 2016-06-23
+
+* [maintenance] Upgrade td-client v0.7.22 [#45](https://github.com/treasure-data/embulk-output-td/pull/45)
+
 ## 0.3.3 - 2016-05-27
 
 * [maintenance] Upgrade td-client v0.7.19 [#42](https://github.com/treasure-data/embulk-output-td/pull/42)
