@@ -221,6 +221,15 @@ public class TestTdOutputPlugin
 
         { // proxy setting
             PluginTask task = pluginTask(config.deepCopy()
+                    .set("http_proxy", ImmutableMap.of("host", "xxx", "port", "8080", "user", "foo", "password", "PASSWORD")));
+            try (TDClient client = plugin.newTDClient(task)) {
+            }
+            // no error happens
+        }
+
+
+        { // proxy setting without user/password
+            PluginTask task = pluginTask(config.deepCopy()
                     .set("http_proxy", ImmutableMap.of("host", "xxx", "port", "8080")));
             try (TDClient client = plugin.newTDClient(task)) {
             }
