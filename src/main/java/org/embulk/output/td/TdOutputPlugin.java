@@ -220,6 +220,14 @@ public class TdOutputPlugin
         @Config("use_ssl")
         @ConfigDefault("false")
         public boolean getUseSsl();
+
+        @Config("user")
+        @ConfigDefault("null")
+        public Optional<String> getUser();
+
+        @Config("password")
+        @ConfigDefault("null")
+        public Optional<String> getPassword();
     }
 
     public static enum ConvertTimestampType
@@ -431,7 +439,7 @@ public class TdOutputPlugin
         if (task.getHttpProxy().isPresent()) {
             HttpProxyTask proxyTask = task.getHttpProxy().get();
             builder.setProxy(new ProxyConfig(proxyTask.getHost(), proxyTask.getPort(), proxyTask.getUseSsl(),
-                    Optional.<String>absent(), Optional.<String>absent()));
+                    proxyTask.getUser(), proxyTask.getPassword()));
         }
         return builder.build();
     }
