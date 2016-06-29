@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 import java.nio.charset.StandardCharsets;
+import java.util.Properties;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
@@ -17,6 +18,8 @@ import javax.validation.constraints.Max;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Predicates;
 import com.google.common.base.Throwables;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
@@ -56,6 +59,9 @@ import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessageUnpacker;
 import org.msgpack.value.Value;
 import org.slf4j.Logger;
+
+import static com.google.common.base.Optional.fromNullable;
+import static java.lang.Integer.parseInt;
 
 public class TdOutputPlugin
         implements OutputPlugin
@@ -436,12 +442,40 @@ public class TdOutputPlugin
         builder.setApiKey(task.getApiKey());
         builder.setEndpoint(task.getEndpoint());
         builder.setUseSSL(task.getUseSsl());
-        if (task.getHttpProxy().isPresent()) {
-            HttpProxyTask proxyTask = task.getHttpProxy().get();
-            builder.setProxy(new ProxyConfig(proxyTask.getHost(), proxyTask.getPort(), proxyTask.getUseSsl(),
+
+        Optional<ProxyConfig> proxyConfig = newProxyConfig(task.getHttpProxy());
+        if (proxyConfig.isPresent()) {
+            builder.setProxy(proxyConfig.get());
+        }
+
+        return builder.build();
+    }
+
+    @VisibleForTesting
+    Optional<ProxyConfig> newProxyConfig(Optional<HttpProxyTask> task)
+    {
+        // This plugin searches http proxy settings and configures them to TDClient. The order of proxy setting searching is:
+        // 1. System properties
+        // 2. http_proxy config option provided by this plugin
+
+        Properties props = System.getProperties();
+        if (props.containsKey("http.proxyHost") || props.containsKey("https.proxyHost")) {
+            boolean useSsl = props.containsKey("https.proxyHost");
+            String proto = !useSsl ? "http" : "https";
+            String host = props.getProperty(proto + ".proxyHost");
+            int port = parseInt(props.getProperty(proto + ".proxyPort", !useSsl ? "80" : "443"));
+            Optional<String> user = fromNullable(props.getProperty(proto + ".proxyUser"));
+            Optional<String> password = fromNullable(props.getProperty(proto + ".proxyPassword"));
+            return Optional.of(new ProxyConfig(host, port, useSsl, user, password));
+        }
+        else if (task.isPresent()) {
+            HttpProxyTask proxyTask = task.get();
+            return Optional.of(new ProxyConfig(proxyTask.getHost(), proxyTask.getPort(), proxyTask.getUseSsl(),
                     proxyTask.getUser(), proxyTask.getPassword()));
         }
-        return builder.build();
+        else {
+            return Optional.absent();
+        }
     }
 
     @VisibleForTesting
