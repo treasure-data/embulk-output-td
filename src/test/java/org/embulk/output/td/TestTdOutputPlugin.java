@@ -1,8 +1,10 @@
 package org.embulk.output.td;
 
+import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import com.treasuredata.client.ProxyConfig;
 import com.treasuredata.client.TDClient;
 import com.treasuredata.client.TDClientHttpConflictException;
 import com.treasuredata.client.TDClientHttpNotFoundException;
@@ -18,6 +20,7 @@ import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
 import org.embulk.config.TaskSource;
 import org.embulk.output.td.TdOutputPlugin.PluginTask;
+import org.embulk.output.td.TdOutputPlugin.HttpProxyTask;
 import org.embulk.output.td.TdOutputPlugin.TimestampColumnOption;
 import org.embulk.output.td.TdOutputPlugin.UnixTimestampUnit;
 import org.embulk.output.td.writer.FieldWriterSet;
@@ -387,6 +390,30 @@ public class TestTdOutputPlugin
             doThrow(conflict()).when(client).createBulkImportSession(anyString(), anyString(), anyString());
             doReturn(session(UPLOADING, true)).when(client).getBulkImportSession("my_session");
             assertEquals(false, plugin.startBulkImportSession(client, "my_session", "my_db", "my_table"));
+        }
+    }
+
+    @Test
+    public void newProxyConfig()
+    {
+        // confirm if proxy system properties override proxy setting by http_proxy config option.
+
+        HttpProxyTask proxyTask = Exec.newConfigSource()
+                .set("host", "option_host")
+                .set("port", 8080)
+                .loadConfig(HttpProxyTask.class);
+
+        String originalProxyHost = System.getProperty("http.proxyHost");
+        try {
+            System.setProperty("http.proxyHost", "property_host");
+            Optional<ProxyConfig> proxyConfig = plugin.newProxyConfig(Optional.of(proxyTask));
+            assertEquals("property_host", proxyConfig.get().getHost());
+            assertEquals(80, proxyConfig.get().getPort());
+        }
+        finally {
+            if (originalProxyHost != null) {
+                System.setProperty("http.proxyHost", originalProxyHost);
+            }
         }
     }
 
