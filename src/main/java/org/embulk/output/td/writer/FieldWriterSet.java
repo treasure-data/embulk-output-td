@@ -41,7 +41,7 @@ public class FieldWriterSet
     private final IFieldWriter[] fieldWriters;
     private final Optional<TimeValueGenerator> staticTimeValue;
 
-    public FieldWriterSet(Logger log, TdOutputPlugin.PluginTask task, Schema schema)
+    public FieldWriterSet(Logger log, TdOutputPlugin.PluginTask task, Schema schema, boolean runStage)
     {
         Optional<String> userDefinedPrimaryKeySourceColumnName = task.getTimeColumn();
         ConvertTimestampType convertTimestampType = task.getConvertTimestampType();
@@ -79,14 +79,18 @@ public class FieldWriterSet
                 if (userDefinedPrimaryKeySourceColumnName.isPresent()) {
                     columnName = newColumnUniqueName(columnName, schema);
                     mode = ColumnWriterMode.SIMPLE_VALUE;
-                    log.warn("time_column '{}' is set but 'time' column also exists. The existent 'time' column is renamed to {}",
-                            userDefinedPrimaryKeySourceColumnName.get(), columnName);
+                    if (!runStage) {
+                        log.warn("time_column '{}' is set but 'time' column also exists. The existent 'time' column is renamed to {}",
+                                userDefinedPrimaryKeySourceColumnName.get(), columnName);
+                    }
                 }
                 else if (timeValueConfig.isPresent()) {
                     columnName = newColumnUniqueName(columnName, schema);
                     mode = ColumnWriterMode.SIMPLE_VALUE;
-                    log.warn("time_value is set but 'time' column also exists. The existent 'time' column is renamed to {}",
-                            columnName);
+                    if (!runStage) {
+                        log.warn("time_value is set but 'time' column also exists. The existent 'time' column is renamed to {}",
+                                columnName);
+                    }
                 }
                 else {
                     mode = ColumnWriterMode.PRIMARY_KEY;
@@ -101,10 +105,14 @@ public class FieldWriterSet
 
             switch (mode) {
                 case PRIMARY_KEY:
-                    log.info("Using {}:{} column as the data partitioning key", columnName, columnType);
+                    if (!runStage) {
+                        log.info("Using {}:{} column as the data partitioning key", columnName, columnType);
+                    }
                     if (columnType instanceof LongType) {
                         if (task.getUnixTimestampUnit() != TdOutputPlugin.UnixTimestampUnit.SEC) {
-                            log.warn("time column is converted from {} to seconds", task.getUnixTimestampUnit());
+                            if (!runStage) {
+                                log.warn("time column is converted from {} to seconds", task.getUnixTimestampUnit());
+                            }
                         }
                         writer = new UnixTimestampLongFieldWriter(columnName, task.getUnixTimestampUnit().getFractionUnit());
                         foundPrimaryKey = true;
@@ -160,14 +168,18 @@ public class FieldWriterSet
 
             IFieldWriter writer;
             if (columnType instanceof LongType) {
-                log.info("Duplicating {}:{} column (unix timestamp {}) to 'time' column as seconds for the data partitioning",
-                        columnName, columnType, task.getUnixTimestampUnit());
+                if (!runStage) {
+                    log.info("Duplicating {}:{} column (unix timestamp {}) to 'time' column as seconds for the data partitioning",
+                            columnName, columnType, task.getUnixTimestampUnit());
+                }
                 IFieldWriter fw = new LongFieldWriter(columnName);
                 writer = new UnixTimestampFieldDuplicator(fw, "time", task.getUnixTimestampUnit().getFractionUnit());
             }
             else if (columnType instanceof TimestampType) {
-                log.info("Duplicating {}:{} column to 'time' column as seconds for the data partitioning",
-                        columnName, columnType);
+                if (!runStage) {
+                    log.info("Duplicating {}:{} column to 'time' column as seconds for the data partitioning",
+                            columnName, columnType);
+                }
                 IFieldWriter fw = newSimpleTimestampFieldWriter(columnName, columnType, convertTimestampType, timestampFormatters[duplicatePrimaryKeySourceIndex]);
                 writer = new TimestampFieldLongDuplicator(fw, "time");
             }
@@ -191,7 +203,9 @@ public class FieldWriterSet
             }
 
             long uploadTime = System.currentTimeMillis() / 1000;
-            log.info("'time' column is generated and is set to a unix time {}", uploadTime);
+            if (!runStage) {
+                log.info("'time' column is generated and is set to a unix time {}", uploadTime);
+            }
             TimeValueConfig newConfig = Exec.newConfigSource().set("mode", "fixed_time").set("value", uploadTime).loadConfig(TimeValueConfig.class);
             task.setTimeValue(Optional.of(newConfig));
             staticTimeValue = Optional.of(TimeValueGenerator.newGenerator(newConfig));

@@ -829,7 +829,7 @@ public class TdOutputPlugin
 
         RecordWriter closeLater = null;
         try {
-            FieldWriterSet fieldWriters = new FieldWriterSet(log, task, schema);
+            FieldWriterSet fieldWriters = new FieldWriterSet(log, task, schema, true);
             closeLater = new RecordWriter(task, taskIndex, newTDClient(task), fieldWriters);
             RecordWriter recordWriter = closeLater;
             recordWriter.open(schema);
