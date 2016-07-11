@@ -1,3 +1,8 @@
+## 0.3.6 - 2016-07-11
+
+* [new feature] Http proxy config from system properties [#47](https://github.com/treasure-data/embulk-output-td/pull/47)
+* [maintenance] Remove redundant logging during run stage [#48](https://github.com/treasure-data/embulk-output-td/pull/48)
+
 ## 0.3.5 - 2016-06-29
 
 * [new feature] Enable user/password for `http_proxy` option [#46](https://github.com/treasure-data/embulk-output-td/pull/46)
