@@ -58,7 +58,7 @@ public class RecordWriter
 
     public static void validateSchema(Logger log, TdOutputPlugin.PluginTask task, Schema schema)
     {
-        new FieldWriterSet(log, task, schema);
+        new FieldWriterSet(log, task, schema, false);
     }
 
     @VisibleForTesting
