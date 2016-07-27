@@ -1,3 +1,7 @@
+## 0.3.7 - 2016-07-27
+
+* [maintenance] Upgrade td-client v0.7.24 [#49](https://github.com/treasure-data/embulk-output-td/pull/49)
+
 ## 0.3.6 - 2016-07-11
 
 * [new feature] Http proxy config from system properties [#47](https://github.com/treasure-data/embulk-output-td/pull/47)
