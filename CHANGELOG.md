@@ -1,3 +1,7 @@
+## 0.3.8 - 2016-08-15
+
+* [maintenance] Change retry configuration [#50](https://github.com/treasure-data/embulk-output-td/pull/50)
+
 ## 0.3.7 - 2016-07-27
 
 * [maintenance] Upgrade td-client v0.7.24 [#49](https://github.com/treasure-data/embulk-output-td/pull/49)
