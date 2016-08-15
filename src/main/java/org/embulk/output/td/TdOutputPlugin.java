@@ -442,6 +442,11 @@ public class TdOutputPlugin
         builder.setApiKey(task.getApiKey());
         builder.setEndpoint(task.getEndpoint());
         builder.setUseSSL(task.getUseSsl());
+        builder.setConnectTimeoutMillis(60000); // default 15000
+        builder.setIdleTimeoutMillis(60000); // default 60000
+        builder.setRetryLimit(20); // default 10
+        builder.setRetryInitialIntervalMillis(1000); // default 500
+        builder.setRetryMaxIntervalMillis(90000); // default 60000
 
         Optional<ProxyConfig> proxyConfig = newProxyConfig(task.getHttpProxy());
         if (proxyConfig.isPresent()) {
