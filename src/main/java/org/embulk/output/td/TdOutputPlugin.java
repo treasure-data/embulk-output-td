@@ -168,6 +168,18 @@ public class TdOutputPlugin
         @Min(0)
         int getDisplayedErrorRecordsCountLimit();
 
+        @Config("retry_limit")
+        @ConfigDefault("20")
+        int getRetryLimit();
+
+        @Config("retry_initial_interval_millis")
+        @ConfigDefault("1000")
+        int getRetryInitialIntervalMillis();
+
+        @Config("retry_max_interval_millis")
+        @ConfigDefault("90000")
+        int getRetryMaxIntervalMillis();
+
         public boolean getDoUpload();
         public void setDoUpload(boolean doUpload);
 
@@ -444,9 +456,9 @@ public class TdOutputPlugin
         builder.setUseSSL(task.getUseSsl());
         builder.setConnectTimeoutMillis(60000); // default 15000
         builder.setIdleTimeoutMillis(60000); // default 60000
-        builder.setRetryLimit(20); // default 10
-        builder.setRetryInitialIntervalMillis(1000); // default 500
-        builder.setRetryMaxIntervalMillis(90000); // default 60000
+        builder.setRetryLimit(task.getRetryLimit()); // default 10
+        builder.setRetryInitialIntervalMillis(task.getRetryInitialIntervalMillis()); // default 500
+        builder.setRetryMaxIntervalMillis(task.getRetryMaxIntervalMillis()); // default 60000
 
         Optional<ProxyConfig> proxyConfig = newProxyConfig(task.getHttpProxy());
         if (proxyConfig.isPresent()) {
