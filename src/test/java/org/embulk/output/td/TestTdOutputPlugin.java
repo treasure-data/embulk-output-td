@@ -47,6 +47,7 @@ import static com.treasuredata.client.model.TDBulkImportSession.ImportStatus.REA
 import static com.treasuredata.client.model.TDBulkImportSession.ImportStatus.UNKNOWN;
 import static com.treasuredata.client.model.TDBulkImportSession.ImportStatus.UPLOADING;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
@@ -70,6 +71,45 @@ public class TestTdOutputPlugin
     {
         config = config();
         plugin = plugin();
+    }
+
+    @Test
+    public void checkDefaultValues()
+    {
+        ConfigSource config = this.config.deepCopy();
+        PluginTask task = config.loadConfig(PluginTask.class);
+        assertEquals(true, task.getUseSsl());
+        assertFalse(task.getHttpProxy().isPresent());
+        assertEquals(TdOutputPlugin.Mode.APPEND, task.getMode());
+        assertEquals(true, task.getAutoCreateTable());
+        assertFalse(task.getSession().isPresent());
+        assertEquals(TdOutputPlugin.ConvertTimestampType.STRING, task.getConvertTimestampType());
+        assertFalse(task.getTimeColumn().isPresent());
+        assertFalse(task.getTimeValue().isPresent());
+        assertEquals(TdOutputPlugin.UnixTimestampUnit.SEC, task.getUnixTimestampUnit());
+        assertFalse(task.getTempDir().isPresent());
+        assertEquals(2, task.getUploadConcurrency());
+        assertEquals(16384, task.getFileSplitSize());
+        assertEquals("%Y-%m-%d %H:%M:%S.%3N", task.getDefaultTimestampFormat());
+        assertTrue(task.getColumnOptions().isEmpty());
+        assertFalse(task.getStopOnInvalidRecord());
+        assertEquals(10, task.getDisplayedErrorRecordsCountLimit());
+        assertEquals(20, task.getRetryLimit());
+        assertEquals(1000, task.getRetryInitialIntervalMillis());
+        assertEquals(90000, task.getRetryMaxIntervalMillis());
+    }
+
+    @Test
+    public void checkRetryValues()
+    {
+        ConfigSource config = this.config.deepCopy()
+                .set("retry_limit", 17)
+                .set("retry_initial_interval_millis", 4822)
+                .set("retry_max_interval_millis", 19348);
+        PluginTask task = config.loadConfig(PluginTask.class);
+        assertEquals(17, task.getRetryLimit());
+        assertEquals(4822, task.getRetryInitialIntervalMillis());
+        assertEquals(19348, task.getRetryMaxIntervalMillis());
     }
 
     @Test
