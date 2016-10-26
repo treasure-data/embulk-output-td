@@ -1,3 +1,7 @@
+## 0.3.9 - 2016-10-26
+
+* [maintenance] Add retry limit and interval configurations [#51](https://github.com/treasure-data/embulk-output-td/pull/51)
+
 ## 0.3.8 - 2016-08-15
 
 * [maintenance] Change retry configuration [#50](https://github.com/treasure-data/embulk-output-td/pull/50)
