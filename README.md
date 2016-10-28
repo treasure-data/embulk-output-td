@@ -32,6 +32,9 @@ TODO: Write short description here
 - **column_options**: advanced: a key-value pairs where key is a column name and value is options for the column.
   - **timezone**: If input column type (embulk type) is timestamp, this plugin needs to format the timestamp value into a SQL string. In this cases, this timezone option is used to control the timezone. (string, value of default_timezone option is used by default)
   - **format**: If input column type (embulk type) is timestamp, this plugin needs to format the timestamp value into a string. This timestamp_format option is used to control the format of the timestamp. (string, value of default_timestamp_format option is used by default)
+- **retry_limit**: indicates how many retries are allowed (int, default: 20)
+- **retry_initial_interval_millis**: the initial intervals (int, default: 1000)
+- **retry_max_interval_millis**: the maximum intervals. The interval doubles every retry until retry_max_interval_millis is reached. (int, default: 90000)
 
 ## Modes
 * **append**:
