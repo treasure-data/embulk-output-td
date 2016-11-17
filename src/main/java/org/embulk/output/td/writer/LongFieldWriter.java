@@ -9,7 +9,7 @@ import java.io.IOException;
 public class LongFieldWriter
         extends FieldWriter
 {
-    LongFieldWriter(String keyName)
+    public LongFieldWriter(String keyName)
     {
         super(keyName);
     }
