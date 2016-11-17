@@ -600,7 +600,7 @@ public class TestTdOutputPlugin
 
     public static FieldWriterSet fieldWriters(Logger log, PluginTask task, Schema schema)
     {
-        return spy(new FieldWriterSet(log, task, schema, false));
+        return spy(FieldWriterSet.createWithValidation(log, task, schema, false));
     }
 
     public static RecordWriter recordWriter(PluginTask task, TDClient client, FieldWriterSet fieldWriters)

@@ -40,7 +40,7 @@ public class TestFieldWriterSet
         { // if schema doesn't have appropriate time column, it throws ConfigError.
             schema = schema("_c0", Types.STRING, "time", Types.STRING); // not long or timestamp
             try {
-                new FieldWriterSet(log, pluginTask(config), schema, false);
+                FieldWriterSet.createWithValidation(log, pluginTask(config), schema, false);
                 fail();
             }
             catch (Throwable t) {
@@ -51,7 +51,7 @@ public class TestFieldWriterSet
         { // if schema doesn't have a column specified as time_column column, it throws ConfigError
             schema = schema("_c0", Types.STRING, "_c1", Types.STRING);
             try {
-                new FieldWriterSet(log, pluginTask(config.deepCopy().set("time_column", "_c2")), schema, false);
+                FieldWriterSet.createWithValidation(log, pluginTask(config.deepCopy().set("time_column", "_c2")), schema, false);
                 fail();
             }
             catch (Throwable t) {
@@ -62,7 +62,7 @@ public class TestFieldWriterSet
         { // if time_column column is not appropriate column type, it throws ConfigError.
             schema = schema("_c0", Types.STRING, "_c1", Types.STRING);
             try {
-                new FieldWriterSet(log, pluginTask(config.deepCopy().set("time_column", "_c1")), schema, false);
+                FieldWriterSet.createWithValidation(log, pluginTask(config.deepCopy().set("time_column", "_c1")), schema, false);
                 fail();
             }
             catch (Throwable t) {
@@ -73,7 +73,7 @@ public class TestFieldWriterSet
         { // if both of time_column and time_value are specified, it throws ConfigError.
             schema = schema("_c0", Types.STRING, "_c1", Types.LONG);
             try {
-                new FieldWriterSet(log, pluginTask(config.deepCopy().set("time_column", "_c1").set("time_value", ImmutableMap.of("from", 0L, "to", 0L))), schema, false);
+                FieldWriterSet.createWithValidation(log, pluginTask(config.deepCopy().set("time_column", "_c1").set("time_value", ImmutableMap.of("from", 0L, "to", 0L))), schema, false);
                 fail();
             }
             catch (Throwable t) {
@@ -87,14 +87,14 @@ public class TestFieldWriterSet
     {
         { // time column (timestamp type) exists
             Schema schema = schema("time", Types.TIMESTAMP, "_c0", Types.TIMESTAMP);
-            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config), schema, false);
+            FieldWriterSet writers = FieldWriterSet.createWithValidation(log, pluginTask(config), schema, false);
 
             assertTrue(writers.getFieldWriter(0) instanceof TimestampLongFieldWriter);
         }
 
         { // time column (long type) exists
             Schema schema = schema("time", Types.LONG, "_c0", Types.TIMESTAMP);
-            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config), schema, false);
+            FieldWriterSet writers = FieldWriterSet.createWithValidation(log, pluginTask(config), schema, false);
 
             assertTrue(writers.getFieldWriter(0) instanceof UnixTimestampLongFieldWriter);
 
@@ -106,21 +106,21 @@ public class TestFieldWriterSet
     {
         { // time_column option (timestamp type)
             Schema schema = schema("_c0", Types.TIMESTAMP, "_c1", Types.STRING);
-            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config.deepCopy().set("time_column", "_c0")), schema, false);
+            FieldWriterSet writers = FieldWriterSet.createWithValidation(log, pluginTask(config.deepCopy().set("time_column", "_c0")), schema, false);
 
             assertTrue(writers.getFieldWriter(0) instanceof TimestampFieldLongDuplicator);
         }
 
         { // time_column option (long type)
             Schema schema = schema("_c0", Types.LONG, "_c1", Types.STRING);
-            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config.deepCopy().set("time_column", "_c0")), schema, false);
+            FieldWriterSet writers = FieldWriterSet.createWithValidation(log, pluginTask(config.deepCopy().set("time_column", "_c0")), schema, false);
 
             assertTrue(writers.getFieldWriter(0) instanceof UnixTimestampFieldDuplicator);
         }
 
         { // time_column option (typestamp type) if time column exists
             Schema schema = schema("_c0", Types.TIMESTAMP, "time", Types.TIMESTAMP);
-            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config.deepCopy().set("time_column", "_c0")), schema, false);
+            FieldWriterSet writers = FieldWriterSet.createWithValidation(log, pluginTask(config.deepCopy().set("time_column", "_c0")), schema, false);
 
             assertTrue(writers.getFieldWriter(0) instanceof TimestampFieldLongDuplicator); // c0
             assertTrue(writers.getFieldWriter(1) instanceof TimestampStringFieldWriter); // renamed column
@@ -128,7 +128,7 @@ public class TestFieldWriterSet
 
         { // time_column option (long type) if time column exists
             Schema schema = schema("_c0", Types.LONG, "time", Types.TIMESTAMP);
-            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config.deepCopy().set("time_column", "_c0")), schema, false);
+            FieldWriterSet writers = FieldWriterSet.createWithValidation(log, pluginTask(config.deepCopy().set("time_column", "_c0")), schema, false);
 
             assertTrue(writers.getFieldWriter(0) instanceof UnixTimestampFieldDuplicator); // c0
             assertTrue(writers.getFieldWriter(1) instanceof TimestampStringFieldWriter); // renamed column
@@ -140,7 +140,7 @@ public class TestFieldWriterSet
     {
         { // if not specify default_timestamp_type_convert_to, use string by default
             Schema schema = schema("_c0", Types.TIMESTAMP, "time", Types.TIMESTAMP);
-            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config.deepCopy()), schema, false);
+            FieldWriterSet writers = FieldWriterSet.createWithValidation(log, pluginTask(config.deepCopy()), schema, false);
 
             assertTrue(writers.getFieldWriter(0) instanceof TimestampStringFieldWriter); // c0
             assertTrue(writers.getFieldWriter(1) instanceof TimestampLongFieldWriter); // time
@@ -148,7 +148,7 @@ public class TestFieldWriterSet
 
         { // and use time_column option
             Schema schema = schema("_c0", Types.TIMESTAMP, "time", Types.TIMESTAMP);
-            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config.deepCopy().set("time_column", "_c0")), schema, false);
+            FieldWriterSet writers = FieldWriterSet.createWithValidation(log, pluginTask(config.deepCopy().set("time_column", "_c0")), schema, false);
 
             assertTrue(writers.getFieldWriter(0) instanceof TimestampFieldLongDuplicator); // c0
             assertTrue(writers.getFieldWriter(1) instanceof TimestampStringFieldWriter); // time renamed
@@ -156,7 +156,7 @@ public class TestFieldWriterSet
 
         { // if default_timestamp_type_convert_to is string, use string
             Schema schema = schema("_c0", Types.TIMESTAMP, "time", Types.TIMESTAMP);
-            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config.deepCopy().set("default_timestamp_type_convert_to", "string")), schema, false);
+            FieldWriterSet writers = FieldWriterSet.createWithValidation(log, pluginTask(config.deepCopy().set("default_timestamp_type_convert_to", "string")), schema, false);
 
             assertTrue(writers.getFieldWriter(0) instanceof TimestampStringFieldWriter); // c0
             assertTrue(writers.getFieldWriter(1) instanceof TimestampLongFieldWriter); // time
@@ -164,7 +164,7 @@ public class TestFieldWriterSet
 
         { // and use time_column option
             Schema schema = schema("_c0", Types.TIMESTAMP, "time", Types.TIMESTAMP);
-            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config.deepCopy().set("default_timestamp_type_convert_to", "string").set("time_column", "_c0")), schema, false);
+            FieldWriterSet writers = FieldWriterSet.createWithValidation(log, pluginTask(config.deepCopy().set("default_timestamp_type_convert_to", "string").set("time_column", "_c0")), schema, false);
 
             assertTrue(writers.getFieldWriter(0) instanceof TimestampFieldLongDuplicator); // c0
             assertTrue(writers.getFieldWriter(1) instanceof TimestampStringFieldWriter); // time renamed
@@ -172,7 +172,7 @@ public class TestFieldWriterSet
 
         { // if default_timestamp_type_conver_to is sec, use long
             Schema schema = schema("_c0", Types.TIMESTAMP, "time", Types.TIMESTAMP);
-            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config.deepCopy().set("default_timestamp_type_convert_to", "sec")), schema, false);
+            FieldWriterSet writers = FieldWriterSet.createWithValidation(log, pluginTask(config.deepCopy().set("default_timestamp_type_convert_to", "sec")), schema, false);
 
             assertTrue(writers.getFieldWriter(0) instanceof TimestampLongFieldWriter); // c0
             assertTrue(writers.getFieldWriter(1) instanceof TimestampLongFieldWriter); // time
@@ -180,7 +180,7 @@ public class TestFieldWriterSet
 
         { // and use time_column option
             Schema schema = schema("_c0", Types.TIMESTAMP, "time", Types.TIMESTAMP);
-            FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config.deepCopy().set("default_timestamp_type_convert_to", "sec").set("time_column", "_c0")), schema, false);
+            FieldWriterSet writers = FieldWriterSet.createWithValidation(log, pluginTask(config.deepCopy().set("default_timestamp_type_convert_to", "sec").set("time_column", "_c0")), schema, false);
 
             assertTrue(writers.getFieldWriter(0) instanceof TimestampFieldLongDuplicator); // c0
             assertTrue(writers.getFieldWriter(1) instanceof TimestampLongFieldWriter); // time renamed
@@ -192,7 +192,7 @@ public class TestFieldWriterSet
             throws Exception
     {
         Schema schema = schema("_c0", Types.TIMESTAMP, "_c1", Types.LONG);
-        FieldWriterSet writers = new FieldWriterSet(log, pluginTask(config), schema, false);
+        FieldWriterSet writers = FieldWriterSet.createWithValidation(log, pluginTask(config), schema, false);
 
         assertTrue(writers.getFieldWriter(0) instanceof TimestampStringFieldWriter); // c0
         assertTrue(writers.getFieldWriter(1) instanceof LongFieldWriter); // c1

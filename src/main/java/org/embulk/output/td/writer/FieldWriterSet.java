@@ -41,7 +41,14 @@ public class FieldWriterSet
     private final IFieldWriter[] fieldWriters;
     private final Optional<TimeValueGenerator> staticTimeValue;
 
-    public FieldWriterSet(Logger log, TdOutputPlugin.PluginTask task, Schema schema, boolean runStage)
+    protected FieldWriterSet(int fieldCount, IFieldWriter[] fieldWriters, Optional<TimeValueGenerator> staticTimeValue)
+    {
+        this.fieldCount = fieldCount;
+        this.fieldWriters = fieldWriters;
+        this.staticTimeValue = staticTimeValue;
+    }
+
+    public static FieldWriterSet createWithValidation(Logger log, TdOutputPlugin.PluginTask task, Schema schema, boolean runStage)
     {
         Optional<String> userDefinedPrimaryKeySourceColumnName = task.getTimeColumn();
         ConvertTimestampType convertTimestampType = task.getConvertTimestampType();
@@ -54,7 +61,7 @@ public class FieldWriterSet
         int duplicatePrimaryKeySourceIndex = -1;
 
         int fc = 0;
-        fieldWriters = new IFieldWriter[schema.size()];
+        IFieldWriter[] createdFieldWriters = new IFieldWriter[schema.size()];
         TimestampFormatter[] timestampFormatters = Timestamps.newTimestampColumnFormatters(task, schema, task.getColumnOptions());
 
         for (int i = 0; i < schema.size(); i++) {
@@ -140,24 +147,18 @@ public class FieldWriterSet
                     throw new AssertionError();
             }
 
-            fieldWriters[i] = writer;
+            createdFieldWriters[i] = writer;
             fc += 1;
         }
 
         if (foundPrimaryKey) {
             // appropriate 'time' column is found
-
-            staticTimeValue = Optional.absent();
-            fieldCount = fc;
-            return;
+            return new FieldWriterSet(fc, createdFieldWriters, Optional.<TimeValueGenerator>absent());
         }
 
         if (timeValueConfig.isPresent()) {
             // 'time_value' option is specified
-
-            staticTimeValue = Optional.of(TimeValueGenerator.newGenerator(timeValueConfig.get()));
-            fieldCount = fc + 1;
-            return;
+            return new FieldWriterSet(fc + 1, createdFieldWriters, Optional.of(TimeValueGenerator.newGenerator(timeValueConfig.get())));
         }
 
         if (!foundPrimaryKey && duplicatePrimaryKeySourceIndex >= 0) {
@@ -189,10 +190,8 @@ public class FieldWriterSet
             }
 
             // replace existint writer
-            fieldWriters[duplicatePrimaryKeySourceIndex] = writer;
-            staticTimeValue = Optional.absent();
-            fieldCount = fc + 1;
-            return;
+            createdFieldWriters[duplicatePrimaryKeySourceIndex] = writer;
+            return new FieldWriterSet(fc + 1, createdFieldWriters, Optional.<TimeValueGenerator>absent());
         }
 
         if (!foundPrimaryKey) {
@@ -208,9 +207,7 @@ public class FieldWriterSet
             }
             TimeValueConfig newConfig = Exec.newConfigSource().set("mode", "fixed_time").set("value", uploadTime).loadConfig(TimeValueConfig.class);
             task.setTimeValue(Optional.of(newConfig));
-            staticTimeValue = Optional.of(TimeValueGenerator.newGenerator(newConfig));
-            fieldCount = fc + 1;
-            return;
+            return new FieldWriterSet(fc + 1, createdFieldWriters, Optional.of(TimeValueGenerator.newGenerator(newConfig)));
         }
 
         throw new AssertionError("Cannot select primary key");
@@ -236,7 +233,7 @@ public class FieldWriterSet
         return false;
     }
 
-    private static FieldWriter newSimpleFieldWriter(String columnName, Type columnType, ConvertTimestampType convertTimestampType, TimestampFormatter timestampFormatter)
+    protected static FieldWriter newSimpleFieldWriter(String columnName, Type columnType, ConvertTimestampType convertTimestampType, TimestampFormatter timestampFormatter)
     {
         if (columnType instanceof BooleanType) {
             return new BooleanFieldWriter(columnName);

@@ -875,7 +875,7 @@ public class TdOutputPlugin
         if (!(task instanceof PluginTask)) {
             throw new RuntimeException("Fatal unexpected error: Task for FieldWriterSet is not TdOutputPlugin.PluginTask.");
         }
-        return new FieldWriterSet(log, (PluginTask) task, schema, true);
+        return FieldWriterSet.createWithValidation(log, (PluginTask) task, schema, true);
     }
 
     protected void validateFieldWriterSet(Logger log, Task task, Schema schema)
@@ -883,6 +883,6 @@ public class TdOutputPlugin
         if (!(task instanceof PluginTask)) {
             throw new RuntimeException("Fatal unexpected error: Task for FieldWriterSet is not TdOutputPlugin.PluginTask.");
         }
-        new FieldWriterSet(log, (PluginTask) task, schema, false);
+        FieldWriterSet.createWithValidation(log, (PluginTask) task, schema, false);
     }
 }
