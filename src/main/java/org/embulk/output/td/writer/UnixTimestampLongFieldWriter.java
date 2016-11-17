@@ -11,7 +11,7 @@ public class UnixTimestampLongFieldWriter
 {
     private final int fractionUnit;
 
-    UnixTimestampLongFieldWriter(String keyName, int fractionUnit)
+    public UnixTimestampLongFieldWriter(String keyName, int fractionUnit)
     {
         super(keyName);
         this.fractionUnit = fractionUnit;
