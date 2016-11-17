@@ -870,7 +870,7 @@ public class TdOutputPlugin
         return System.getProperty("java.io.tmpdir");
     }
 
-    private FieldWriterSet createFieldWriterSet(Logger log, Task task, Schema schema)
+    protected FieldWriterSet createFieldWriterSet(Logger log, Task task, Schema schema)
     {
         if (!(task instanceof PluginTask)) {
             throw new RuntimeException("Fatal unexpected error: Task for FieldWriterSet is not TdOutputPlugin.PluginTask.");
@@ -878,7 +878,7 @@ public class TdOutputPlugin
         return new FieldWriterSet(log, (PluginTask) task, schema, true);
     }
 
-    private void validateFieldWriterSet(Logger log, Task task, Schema schema)
+    protected void validateFieldWriterSet(Logger log, Task task, Schema schema)
     {
         if (!(task instanceof PluginTask)) {
             throw new RuntimeException("Fatal unexpected error: Task for FieldWriterSet is not TdOutputPlugin.PluginTask.");
