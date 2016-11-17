@@ -258,7 +258,7 @@ public class FieldWriterSet
         }
     }
 
-    private static FieldWriter newSimpleTimestampFieldWriter(String columnName, Type columnType, ConvertTimestampType convertTimestampType, TimestampFormatter timestampFormatter)
+    protected static FieldWriter newSimpleTimestampFieldWriter(String columnName, Type columnType, ConvertTimestampType convertTimestampType, TimestampFormatter timestampFormatter)
     {
         switch (convertTimestampType) {
         case STRING:
