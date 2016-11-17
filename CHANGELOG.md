@@ -1,3 +1,7 @@
+## 0.3.10 - 2016-11-16
+
+* [maintenance] Setup bintray repo [#55](https://github.com/treasure-data/embulk-output-td/pull/55)
+
 ## 0.3.9 - 2016-10-26
 
 * [maintenance] Add retry limit and interval configurations [#51](https://github.com/treasure-data/embulk-output-td/pull/51)
