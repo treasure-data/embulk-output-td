@@ -6,7 +6,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import org.embulk.config.ConfigException;
-import org.embulk.config.ConfigSource;
 import org.embulk.output.td.TdOutputPlugin;
 import org.embulk.output.td.TdOutputPlugin.ConvertTimestampType;
 import org.embulk.output.td.TimeValueConfig;

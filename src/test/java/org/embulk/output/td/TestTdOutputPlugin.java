@@ -257,26 +257,22 @@ public class TestTdOutputPlugin
     {
         { // no proxy setting
             PluginTask task = pluginTask(config);
-            try (TDClient client = plugin.newTDClient(task)) {
-            }
-            // no error happens
+            TDClient client = plugin.newTDClient(task);
+            // Expect no error happens
         }
 
         { // proxy setting
             PluginTask task = pluginTask(config.deepCopy()
                     .set("http_proxy", ImmutableMap.of("host", "xxx", "port", "8080", "user", "foo", "password", "PASSWORD")));
-            try (TDClient client = plugin.newTDClient(task)) {
-            }
-            // no error happens
+            TDClient client = plugin.newTDClient(task);
+            // Expect no error happens
         }
-
 
         { // proxy setting without user/password
             PluginTask task = pluginTask(config.deepCopy()
                     .set("http_proxy", ImmutableMap.of("host", "xxx", "port", "8080")));
-            try (TDClient client = plugin.newTDClient(task)) {
-            }
-            // no error happens
+            TDClient client = plugin.newTDClient(task);
+            // Expect no error happens
         }
     }
 
@@ -552,10 +548,8 @@ public class TestTdOutputPlugin
         task.setTempDir(plugin.getEnvironmentTempDirectory());
         Schema schema = schema("time", Types.LONG, "c0", Types.STRING, "c1", Types.STRING);
 
-        try (TransactionalPageOutput output = plugin.open(task.dump(), schema, 0)) {
-        }
-
-        // no error happens.
+        TransactionalPageOutput output = plugin.open(task.dump(), schema, 0);
+        // Expect no error happens.
     }
 
     public static ConfigSource config()
