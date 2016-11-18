@@ -56,11 +56,6 @@ public class RecordWriter
         this.fileSplitSize = task.getFileSplitSize() * 1024;
     }
 
-    public static void validateSchema(Logger log, TdOutputPlugin.PluginTask task, Schema schema)
-    {
-        new FieldWriterSet(log, task, schema, false);
-    }
-
     @VisibleForTesting
     public void open(final Schema schema)
             throws IOException

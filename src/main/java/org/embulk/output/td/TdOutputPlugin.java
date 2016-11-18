@@ -382,7 +382,7 @@ public class TdOutputPlugin
             }
 
             // validate FieldWriterSet configuration before transaction is started
-            RecordWriter.validateSchema(log, task, schema);
+            validateFieldWriterSet(log, task, schema);
 
             return doRun(client, schema, task, control);
         }
@@ -846,7 +846,7 @@ public class TdOutputPlugin
 
         RecordWriter closeLater = null;
         try {
-            FieldWriterSet fieldWriters = new FieldWriterSet(log, task, schema, true);
+            FieldWriterSet fieldWriters = createFieldWriterSet(log, task, schema);
             closeLater = new RecordWriter(task, taskIndex, newTDClient(task), fieldWriters);
             RecordWriter recordWriter = closeLater;
             recordWriter.open(schema);
@@ -868,5 +868,21 @@ public class TdOutputPlugin
     String getEnvironmentTempDirectory()
     {
         return System.getProperty("java.io.tmpdir");
+    }
+
+    protected FieldWriterSet createFieldWriterSet(Logger log, Task task, Schema schema)
+    {
+        if (!(task instanceof PluginTask)) {
+            throw new RuntimeException("Fatal unexpected error: Task for FieldWriterSet is not TdOutputPlugin.PluginTask.");
+        }
+        return FieldWriterSet.createWithValidation(log, (PluginTask) task, schema, true);
+    }
+
+    protected void validateFieldWriterSet(Logger log, Task task, Schema schema)
+    {
+        if (!(task instanceof PluginTask)) {
+            throw new RuntimeException("Fatal unexpected error: Task for FieldWriterSet is not TdOutputPlugin.PluginTask.");
+        }
+        FieldWriterSet.createWithValidation(log, (PluginTask) task, schema, false);
     }
 }
