@@ -92,3 +92,22 @@ $ ./gradlew gem classpath
 
 ### Run on Embulk
 $ bin/embulk run -I embulk-output-td/lib/ config.yml
+
+## Release
+
+### Upload gem to Rubygems.org
+
+```
+$ ./gradlew gem     # create .gem file under pkg/ directory
+$ ./gradlew gemPush # create and publish .gem file
+```
+
+Repo URL: https://rubygems.org/gems/embulk-output-td
+
+### Upload jars to Bintray.com
+
+```
+$ ./gradlew bintrayUpload
+```
+
+Repo URL: https://bintray.com/embulk-output-td/maven/embulk-output-td
