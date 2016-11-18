@@ -1,6 +1,5 @@
 package org.embulk.output.td;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -18,13 +17,11 @@ import javax.validation.constraints.Max;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
-import com.google.common.base.Preconditions;
 import com.google.common.base.Predicates;
 import com.google.common.base.Throwables;
+import com.google.common.collect.Lists;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 import com.treasuredata.client.ProxyConfig;
 import com.treasuredata.client.TDClient;
 import com.treasuredata.client.TDClientBuilder;
@@ -695,7 +692,7 @@ public class TdOutputPlugin
 
             public void longColumn(Column column)
             {
-                guessedSchema.put(column.getName(), TDColumnType.LONG);;
+                guessedSchema.put(column.getName(), TDColumnType.LONG);
             }
 
             public void doubleColumn(Column column)
@@ -741,7 +738,8 @@ public class TdOutputPlugin
 
             if (!usedNames.containsKey(key)) {
                 usedNames.put(key, 1);
-            } else {
+            }
+            else {
                 int next = usedNames.get(key);
                 key = key + "_" + next;
                 usedNames.put(key, next + 1);

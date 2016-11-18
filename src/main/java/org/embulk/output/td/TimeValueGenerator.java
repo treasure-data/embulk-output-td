@@ -42,8 +42,9 @@ public abstract class TimeValueGenerator
 
         public IncrementalTimeValueGenerator(final TimeValueConfig config)
         {
-            current = from = config.getFrom().get();
-            to = config.getTo().get();
+            this.from = config.getFrom().get();
+            this.to = config.getTo().get();
+            this.current = from;
         }
 
         @Override

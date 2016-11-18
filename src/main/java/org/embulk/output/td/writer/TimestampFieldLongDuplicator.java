@@ -3,7 +3,6 @@ package org.embulk.output.td.writer;
 import org.embulk.output.td.MsgpackGZFileBuilder;
 import org.embulk.spi.Column;
 import org.embulk.spi.PageReader;
-import org.embulk.spi.time.TimestampFormatter;
 
 import java.io.IOException;
 
