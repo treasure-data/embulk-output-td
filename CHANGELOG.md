@@ -1,3 +1,7 @@
+## 0.3.11 - 2016-11-18
+
+* [maintenance] Refactor TdOutputPlugin, FieldWriterSet and else [#56](https://github.com/treasure-data/embulk-output-td/pull/56)
+
 ## 0.3.10 - 2016-11-16
 
 * [maintenance] Setup bintray repo [#55](https://github.com/treasure-data/embulk-output-td/pull/55)
