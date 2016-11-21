@@ -124,7 +124,7 @@ public class TdOutputPlugin
         @Config("tmpdir")
         @ConfigDefault("null")
         public Optional<String> getTempDir();
-        public void setTempDir(String dir);
+        public void setTempDir(Optional<String> dir);
 
         @Config("upload_concurrency")
         @ConfigDefault("2")
@@ -350,7 +350,7 @@ public class TdOutputPlugin
         task.setSessionName(buildBulkImportSessionName(task, Exec.session()));
 
         if (!task.getTempDir().isPresent()) {
-            task.setTempDir(getEnvironmentTempDirectory());
+            task.setTempDir(Optional.of(getEnvironmentTempDirectory()));
         }
 
         try (TDClient client = newTDClient(task)) {
