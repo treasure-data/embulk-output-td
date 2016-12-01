@@ -1,5 +1,6 @@
 package org.embulk.output.td;
 
+import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
 import com.treasuredata.client.TDClient;
 import org.embulk.EmbulkTestRuntime;
@@ -57,7 +58,8 @@ public class TestRecordWriter
                 "_c2", Types.BOOLEAN, "_c3", Types.DOUBLE, "_c4", Types.TIMESTAMP);
 
         plugin = plugin();
-        task = pluginTask(config().set("session_name", "my_session").set("tmpdir", plugin.getEnvironmentTempDirectory()));
+        task = pluginTask(config().set("session_name", "my_session")
+                .set("tmpdir", Optional.of(plugin.getEnvironmentTempDirectory())));
     }
 
     @Test
@@ -195,7 +197,7 @@ public class TestRecordWriter
         task = pluginTask(config()
                 .set("session_name", "my_session")
                 .set("time_value", ImmutableMap.of("from", 0L, "to", 0L))
-                .set("tmpdir", plugin.getEnvironmentTempDirectory())
+                .set("tmpdir", Optional.of(plugin.getEnvironmentTempDirectory()))
         );
         recordWriter = recordWriter(task, tdClient(plugin, task), fieldWriters(log, task, schema));
 

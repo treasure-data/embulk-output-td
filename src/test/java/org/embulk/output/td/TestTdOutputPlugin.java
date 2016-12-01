@@ -545,7 +545,7 @@ public class TestTdOutputPlugin
         task.setSessionName("session_name");
         task.setLoadTargetTableName("my_table");
         task.setDoUpload(true);
-        task.setTempDir(plugin.getEnvironmentTempDirectory());
+        task.setTempDir(Optional.of(plugin.getEnvironmentTempDirectory()));
         Schema schema = schema("time", Types.LONG, "c0", Types.STRING, "c1", Types.STRING);
 
         TransactionalPageOutput output = plugin.open(task.dump(), schema, 0);
