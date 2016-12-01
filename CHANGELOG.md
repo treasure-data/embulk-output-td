@@ -1,5 +1,6 @@
 ## 0.3.12 - 2016-11-30
 
+* [maintenance] Upgrade td-client v0.7.29 [#61](https://github.com/treasure-data/embulk-output-td/pull/61)
 * [maintenance] Change variable type of PluginTask.setTempDir() [#60](https://github.com/treasure-data/embulk-output-td/pull/60)
 
 ## 0.3.11 - 2016-11-18
