@@ -19,7 +19,7 @@ configurations {
 }
 
 group = "org.embulk.output.td"
-version = "0.3.11"
+version = "0.3.12"
 
 compileJava.options.encoding = 'UTF-8' // source encoding
 sourceCompatibility = 1.7

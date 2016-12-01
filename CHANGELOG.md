@@ -1,3 +1,7 @@
+## 0.3.12 - 2016-11-30
+
+* [maintenance] Change variable type of PluginTask.setTempDir() [#60](https://github.com/treasure-data/embulk-output-td/pull/60)
+
 ## 0.3.11 - 2016-11-18
 
 * [maintenance] Refactor TdOutputPlugin, FieldWriterSet and else [#56](https://github.com/treasure-data/embulk-output-td/pull/56)
