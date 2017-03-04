@@ -193,8 +193,8 @@ public class RecordWriter
     @Override
     public TaskReport commit()
     {
-        TaskReport report = Exec.newTaskReport();
-        //  TODO
+        TaskReport report = Exec.newTaskReport()
+                .set(TdOutputPlugin.TASK_REPORT_UPLOADED_PART_NUMBER, partSeqId);
         return report;
     }
 }

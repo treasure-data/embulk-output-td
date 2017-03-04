@@ -331,6 +331,8 @@ public class TdOutputPlugin
         }
     }
 
+    static final String TASK_REPORT_UPLOADED_PART_NUMBER = "uploaded_part_number";
+
     private final Logger log;
 
     public TdOutputPlugin()
@@ -400,8 +402,16 @@ public class TdOutputPlugin
     {
         boolean doUpload = startBulkImportSession(client, task.getSessionName(), task.getDatabase(), task.getLoadTargetTableName());
         task.setDoUpload(doUpload);
-        control.run(task.dump());
-        completeBulkImportSession(client, schema, task, 0);  // TODO perform job priority
+        List<TaskReport> taskReports = control.run(task.dump());
+        if (!isNoUploadedParts(taskReports)) {
+            completeBulkImportSession(client, schema, task, 0);  // TODO perform job priority
+        }
+        else {
+            // if no parts, it skips submitting requests for perform and commit.
+            log.info("Skip performing and committing bulk import session '{}' since no parts are uploaded.", task.getSessionName());
+            Map<String, TDColumnType> newColumns = updateSchema(client, schema, task);
+            printNewAddedColumns(newColumns);
+        }
 
         // commit
         switch (task.getMode()) {
@@ -645,12 +655,7 @@ public class TdOutputPlugin
             log.info("    error records: {}", session.getErrorRecords());
             log.info("    valid parts: {}", session.getValidParts());
             log.info("    error parts: {}", session.getErrorParts());
-            if (!newColumns.isEmpty()) {
-                log.info("    new columns:");
-            }
-            for (Map.Entry<String, TDColumnType> pair : newColumns.entrySet()) {
-                log.info("      - {}: {}", pair.getKey(), pair.getValue());
-            }
+            printNewAddedColumns(newColumns);
 
             if (session.getErrorRecords() > 0L) {
                 showBulkImportErrorRecords(client, sessionName, (int) Math.min(session.getErrorRecords(), task.getDisplayedErrorRecordsCountLimit()));
@@ -752,6 +757,16 @@ public class TdOutputPlugin
         return guessedSchema;
     }
 
+    void printNewAddedColumns(Map<String, TDColumnType> newColumns)
+    {
+        if (!newColumns.isEmpty()) {
+            log.info("    new columns:");
+        }
+        for (Map.Entry<String, TDColumnType> pair : newColumns.entrySet()) {
+            log.info("      - {}: {}", pair.getKey(), pair.getValue());
+        }
+    }
+
     private static TDTable findTable(TDClient client, String databaseName, String tableName)
     {
         for (TDTable table : client.listTables(databaseName)) {
@@ -828,6 +843,18 @@ public class TdOutputPlugin
             catch (InterruptedException e) {
             }
         }
+    }
+
+    boolean isNoUploadedParts(List<TaskReport> taskReports)
+    {
+        int partNumber = 0;
+        for (TaskReport taskReport : taskReports) {
+            if (!taskReport.has(TASK_REPORT_UPLOADED_PART_NUMBER)) {
+                return false;
+            }
+            partNumber += taskReport.get(int.class, TASK_REPORT_UPLOADED_PART_NUMBER);
+        }
+        return partNumber == 0;
     }
 
     @VisibleForTesting

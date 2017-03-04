@@ -245,6 +245,6 @@ public class TestRecordWriter
     public void checkTaskReport()
     {
         recordWriter = recordWriter(task, tdClient(plugin, task), fieldWriters(log, task, schema));
-        assertTrue(recordWriter.commit().isEmpty());
+        assertTrue(recordWriter.commit().has(TdOutputPlugin.TASK_REPORT_UPLOADED_PART_NUMBER));
     }
 }
