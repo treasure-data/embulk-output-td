@@ -1,3 +1,7 @@
+## 0.3.13 - 2017-03-03
+
+* [maintenance] Not send perform and commit requests if no parts [#63](https://github.com/treasure-data/embulk-output-td/pull/63)
+
 ## 0.3.12 - 2016-11-30
 
 * [maintenance] Upgrade td-client v0.7.29 [#61](https://github.com/treasure-data/embulk-output-td/pull/61)
