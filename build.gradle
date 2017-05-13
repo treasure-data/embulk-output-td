@@ -32,18 +32,9 @@ dependencies {
     provided    "org.embulk:embulk-standards:0.8.+"
     compile     "org.msgpack:msgpack-core:0.8.+"
     provided    "org.msgpack:msgpack-core:0.8.+"
-    compile    ("com.treasuredata.client:td-client:0.7.36-SNAPSHOT") { // TODO Use 0.7.36 after releasing it.
-        exclude group: "com.fasterxml.jackson.core"
-        exclude group: "com.fasterxml.jackson.datatype"
-    }
+    compile     "com.treasuredata.client:td-client:0.7.37-SNAPSHOT" // TODO Use 0.7.37 after releasing it.
 
     testCompile "junit:junit:4.+"
-    // td-client requires jackson 2.6.7
-    testCompile "com.fasterxml.jackson.core:jackson-core:2.6.7"
-    testCompile "com.fasterxml.jackson.core:jackson-databind:2.6.7"
-    testCompile "com.fasterxml.jackson.core:jackson-annotations:2.6.7"
-    testCompile "com.fasterxml.jackson.datatype:jackson-datatype-guava:2.6.7"
-    testCompile "com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.6.7"
     testCompile "org.bigtesting:fixd:1.0.0"
     testCompile  "org.embulk:embulk-core:0.8.+:tests"
     testCompile  "org.mockito:mockito-core:1.9.5"
