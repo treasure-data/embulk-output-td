@@ -1,3 +1,7 @@
+## 0.3.14 - 2017-05-24
+
+* [maintenance] Use UUID as postfix of generated bulk_import session name [#67](https://github.com/treasure-data/embulk-output-td/pull/67)
+
 ## 0.3.13 - 2017-03-03
 
 * [maintenance] Not send perform and commit requests if no parts [#63](https://github.com/treasure-data/embulk-output-td/pull/63)
