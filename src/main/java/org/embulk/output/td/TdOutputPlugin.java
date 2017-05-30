@@ -577,7 +577,7 @@ public class TdOutputPlugin
             Timestamp time = exec.getTransactionTime(); // TODO implement Exec.getTransactionUniqueName()
             return String.format("embulk_%s_%09d_%s",
                     DateTimeFormat.forPattern("yyyyMMdd_HHmmss").withZoneUTC().print(time.getEpochSecond() * 1000),
-                    time.getNano(), UUID.randomUUID().toString());
+                    time.getNano(), UUID.randomUUID().toString().replace('-', '_'));
         }
     }
 
