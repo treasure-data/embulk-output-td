@@ -1,3 +1,7 @@
+## 0.3.15 - 2017-05-30
+
+* [fix bug] Use underscores for sessions names to fix #70 [#71](https://github.com/treasure-data/embulk-output-td/pull/71)
+
 ## 0.3.14 - 2017-05-24
 
 * [maintenance] Use UUID as postfix of generated bulk_import session name [#67](https://github.com/treasure-data/embulk-output-td/pull/67)
