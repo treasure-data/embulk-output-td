@@ -357,14 +357,7 @@ public class TdOutputPlugin
             task.setTempDir(Optional.of(getEnvironmentTempDirectory()));
         }
 
-        // Embulk v0.8.21 and lower version uses old Jackson and doesn't works with this plugin
-        // https://github.com/embulk/embulk/pull/615
-        String[] versions = EmbulkVersion.VERSION.split("\\.");
-        if (versions.length == 3) {
-            if (Integer.valueOf(versions[1]) <= 8 && Integer.valueOf(versions[2]) < 22) {
-                throw new ConfigException("embulk-output-td v0.4.x+ only supports Embulk v0.8.22 or higher versions");
-            }
-        }
+        checkEmbulkVersion();
 
         try (TDClient client = newTDClient(task)) {
             String databaseName = task.getDatabase();
@@ -825,6 +818,21 @@ public class TdOutputPlugin
                 return null;
             }
         });
+    }
+
+    private void checkEmbulkVersion()
+    {
+        // Embulk v0.8.21 and lower version uses old Jackson and doesn't works with this plugin
+        // https://github.com/embulk/embulk/pull/615
+        String[] versionNumber = EmbulkVersion.VERSION.split("-"); // to split e.g. "0.8.26-SNAPSHOT" or "0.8.30-ALPHA1"
+        if (versionNumber[0] != null) {
+            String[] versions = versionNumber[0].split("\\.");
+            if (versions.length == 3) {
+                if (Integer.valueOf(versions[1]) <= 8 && Integer.valueOf(versions[2]) < 22) {
+                    throw new ConfigException("embulk-output-td v0.4.x+ only supports Embulk v0.8.22 or higher versions");
+                }
+            }
+        }
     }
 
     @VisibleForTesting
