@@ -33,6 +33,7 @@ import com.treasuredata.client.model.TDBulkImportSession.ImportStatus;
 import com.treasuredata.client.model.TDColumn;
 import com.treasuredata.client.model.TDColumnType;
 import com.treasuredata.client.model.TDTable;
+import org.embulk.EmbulkVersion;
 import org.embulk.config.TaskReport;
 import org.embulk.config.Config;
 import org.embulk.config.ConfigDefault;
@@ -355,6 +356,8 @@ public class TdOutputPlugin
         if (!task.getTempDir().isPresent()) {
             task.setTempDir(Optional.of(getEnvironmentTempDirectory()));
         }
+
+        checkEmbulkVersion();
 
         try (TDClient client = newTDClient(task)) {
             String databaseName = task.getDatabase();
@@ -810,6 +813,21 @@ public class TdOutputPlugin
                 return null;
             }
         });
+    }
+
+    private void checkEmbulkVersion()
+    {
+        // Embulk v0.8.21 and lower version uses old Jackson and doesn't works with this plugin
+        // https://github.com/embulk/embulk/pull/615
+        String[] versionNumber = EmbulkVersion.VERSION.split("-"); // to split e.g. "0.8.26-SNAPSHOT" or "0.8.30-ALPHA1"
+        if (versionNumber[0] != null) {
+            String[] versions = versionNumber[0].split("\\.");
+            if (versions.length == 3) {
+                if (Integer.valueOf(versions[1]) <= 8 && Integer.valueOf(versions[2]) < 22) {
+                    throw new ConfigException("embulk-output-td v0.4.x+ only supports Embulk v0.8.22 or higher versions");
+                }
+            }
+        }
     }
 
     @VisibleForTesting
