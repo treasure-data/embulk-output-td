@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
@@ -569,9 +570,9 @@ public class TdOutputPlugin
         }
         else {
             Timestamp time = exec.getTransactionTime(); // TODO implement Exec.getTransactionUniqueName()
-            return String.format("embulk_%s_%09d",
+            return String.format("embulk_%s_%09d_%s",
                     DateTimeFormat.forPattern("yyyyMMdd_HHmmss").withZoneUTC().print(time.getEpochSecond() * 1000),
-                    time.getNano());
+                    time.getNano(), UUID.randomUUID().toString().replace('-', '_'));
         }
     }
 

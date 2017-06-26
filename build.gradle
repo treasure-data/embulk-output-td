@@ -19,7 +19,7 @@ configurations {
 }
 
 group = "org.embulk.output.td"
-version = "0.3.13"
+version = "0.3.15"
 
 compileJava.options.encoding = 'UTF-8' // source encoding
 sourceCompatibility = 1.7
@@ -32,7 +32,7 @@ dependencies {
     provided    "org.embulk:embulk-standards:0.8.+"
     compile     "org.msgpack:msgpack-core:0.8.+"
     provided    "org.msgpack:msgpack-core:0.8.+"
-    compile     "com.treasuredata.client:td-client:0.7.37-SNAPSHOT" // TODO Use 0.7.37 after releasing it.
+    compile    "com.treasuredata.client:td-client:0.7.37"
 
     testCompile "junit:junit:4.+"
     testCompile "org.bigtesting:fixd:1.0.0"
