@@ -1,7 +1,6 @@
 package org.embulk.output.td;
 
 import com.google.common.base.Optional;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.treasuredata.client.ProxyConfig;
@@ -333,24 +332,13 @@ public class TestTdOutputPlugin
         TDTable table = newTable("my_table", "[]");
 
         { // table exists
-            doReturn(ImmutableList.of(table)).when(client).listTables(anyString());
+            doReturn(table).when(client).showTable(anyString(), anyString());
             plugin.validateTableExists(client, "my_db", "my_table");
             // no error happens
         }
 
-        { // table doesn't exist
-            doReturn(ImmutableList.of()).when(client).listTables(anyString());
-            try {
-                plugin.validateTableExists(client, "my_db", "my_table");
-                fail();
-            }
-            catch (Throwable t) {
-                assertTrue(t instanceof ConfigException);
-            }
-        }
-
-        { // database doesn't exist
-            doThrow(notFound()).when(client).listTables(anyString());
+        { // database or table doesn't exist
+            doThrow(notFound()).when(client).showTable(anyString(), anyString());
             try {
                 plugin.validateTableExists(client, "my_db", "my_table");
                 fail();

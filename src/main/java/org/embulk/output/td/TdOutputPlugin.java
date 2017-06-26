@@ -555,15 +555,10 @@ public class TdOutputPlugin
     void validateTableExists(TDClient client, String databaseName, String tableName)
     {
         try {
-            for (TDTable table : client.listTables(databaseName)) {
-                if (table.getName().equals(tableName)) {
-                    return;
-                }
-            }
-            throw new ConfigException(String.format("Table \"%s\".\"%s\" doesn't exist", databaseName, tableName));
+            client.showTable(databaseName, tableName);
         }
         catch (TDClientHttpNotFoundException ex) {
-            throw new ConfigException(String.format("Database \"%s\" doesn't exist", databaseName), ex);
+            throw new ConfigException(String.format("Database \"%s\" or table \"%s\" doesn't exist", databaseName, tableName), ex);
         }
     }
 
@@ -770,12 +765,12 @@ public class TdOutputPlugin
 
     private static TDTable findTable(TDClient client, String databaseName, String tableName)
     {
-        for (TDTable table : client.listTables(databaseName)) {
-            if (table.getName().equals(tableName)) {
-                return table;
-            }
+        try {
+            return client.showTable(databaseName, tableName);
         }
-        return null;
+        catch(TDClientHttpNotFoundException e) {
+            return null;
+        }
     }
 
     private static final Pattern COLUMN_NAME_PATTERN = Pattern.compile("\\A[a-z_][a-z0-9_]*\\z");
