@@ -752,7 +752,7 @@ public class TdOutputPlugin
             newSchema.add(new TDColumn(pair.getKey(), pair.getValue(), key.getBytes(StandardCharsets.UTF_8)));
         }
 
-        client.updateTableSchema(databaseName, task.getLoadTargetTableName(), newSchema);
+        client.appendTableSchema(databaseName, task.getLoadTargetTableName(), newSchema);
         return guessedSchema;
     }
 
