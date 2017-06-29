@@ -1,3 +1,8 @@
+## 0.4.0 - 2017-06-26
+
+* [maintenance] Use TDClient#showTable method to to get table schema [#64](https://github.com/treasure-data/embulk-output-td/pull/64)
+* [maintenance] Use TDClient#appendTableSchema method to update table schema [#65](https://github.com/treasure-data/embulk-output-td/pull/65)
+
 ## 0.3.15 - 2017-05-30
 
 * [fix bug] Use underscores for sessions names to fix #70 [#71](https://github.com/treasure-data/embulk-output-td/pull/71)

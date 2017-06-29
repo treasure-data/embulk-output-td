@@ -1,6 +1,8 @@
 # TD output plugin for Embulk
 
-TODO: Write short description here
+[Treasure Data Service](https://www.treasuredata.com/) output plugin for [Embulk](https://github.com/embulk/embulk)
+
+**NOTICE**: embulk-output-td v0.4.0+ only supports **Embulk v0.8.22+**.
 
 ## Overview
 
