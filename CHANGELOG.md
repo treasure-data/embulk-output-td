@@ -1,3 +1,8 @@
+## 0.4.1 - 2017-08-08
+
+* [maintenance] Upgrade gradle 3.2.1 [#77](https://github.com/treasure-data/embulk-output-td/pull/77)
+* [maintenance] Upgrade td-client-java v0.7.41 [#76](https://github.com/treasure-data/embulk-output-td/pull/76)
+
 ## 0.4.0 - 2017-06-26
 
 * [maintenance] Use TDClient#showTable method to to get table schema [#64](https://github.com/treasure-data/embulk-output-td/pull/64)
