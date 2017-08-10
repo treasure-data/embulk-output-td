@@ -1,3 +1,7 @@
+## 0.4.2 - 2017-08-09
+
+* [maintenance] Fix Embulk version check logic bug [#79](https://github.com/treasure-data/embulk-output-td/pull/79)
+
 ## 0.4.1 - 2017-08-08
 
 * [maintenance] Upgrade gradle 3.2.1 [#77](https://github.com/treasure-data/embulk-output-td/pull/77)
