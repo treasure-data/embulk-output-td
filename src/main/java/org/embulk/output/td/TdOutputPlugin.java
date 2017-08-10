@@ -821,6 +821,8 @@ public class TdOutputPlugin
         // https://github.com/embulk/embulk/pull/615
         boolean isValidVersion = true;
         try {
+            // Embulk v0.8.18 or lower version doesn't have class org.embulk.EmbulkVersion
+            Class.forName("org.embulk.EmbulkVersion");
             String[] versionNumber = EmbulkVersion.VERSION.split("-"); // to split e.g. "0.8.26-SNAPSHOT" or "0.8.30-ALPHA1"
             if (versionNumber[0] != null) {
                 String[] versions = versionNumber[0].split("\\.");
@@ -831,8 +833,7 @@ public class TdOutputPlugin
                 }
             }
         }
-        catch (NoClassDefFoundError ex) {
-            // Embulk v0.8.18 or lower version doesn't have class org.embulk.EmbulkVersion
+        catch (ClassNotFoundException ex) {
             isValidVersion = false;
         }
         if (!isValidVersion) {
