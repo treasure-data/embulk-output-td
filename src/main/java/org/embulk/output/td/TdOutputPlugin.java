@@ -819,14 +819,25 @@ public class TdOutputPlugin
     {
         // Embulk v0.8.21 and lower version uses old Jackson and doesn't works with this plugin
         // https://github.com/embulk/embulk/pull/615
-        String[] versionNumber = EmbulkVersion.VERSION.split("-"); // to split e.g. "0.8.26-SNAPSHOT" or "0.8.30-ALPHA1"
-        if (versionNumber[0] != null) {
-            String[] versions = versionNumber[0].split("\\.");
-            if (versions.length == 3) {
-                if (Integer.valueOf(versions[1]) <= 8 && Integer.valueOf(versions[2]) < 22) {
-                    throw new ConfigException("embulk-output-td v0.4.x+ only supports Embulk v0.8.22 or higher versions");
+        boolean isValidVersion = true;
+        try {
+            // Embulk v0.8.18 or lower version doesn't have class org.embulk.EmbulkVersion
+            Class.forName("org.embulk.EmbulkVersion");
+            String[] versionNumber = EmbulkVersion.VERSION.split("-"); // to split e.g. "0.8.26-SNAPSHOT" or "0.8.30-ALPHA1"
+            if (versionNumber[0] != null) {
+                String[] versions = versionNumber[0].split("\\.");
+                if (versions.length == 3) {
+                    if (Integer.valueOf(versions[1]) <= 8 && Integer.valueOf(versions[2]) < 22) {
+                        isValidVersion = false;
+                    }
                 }
             }
+        }
+        catch (ClassNotFoundException ex) {
+            isValidVersion = false;
+        }
+        if (!isValidVersion) {
+            throw new ConfigException("embulk-output-td v0.4.x+ only supports Embulk v0.8.22 or higher versions");
         }
     }
 
