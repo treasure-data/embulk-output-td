@@ -452,7 +452,7 @@ public class TestTdOutputPlugin
 
         TDClient client = spy(plugin.newTDClient(task));
         doNothing().when(client).freezeBulkImportSession(anyString());
-        doNothing().when(client).performBulkImportSession(anyString());
+        doNothing().when(client).performBulkImportSession(anyString(), any(Optional.class));
         doNothing().when(client).commitBulkImportSession(anyString());
 
         { // uploading + unfreeze
