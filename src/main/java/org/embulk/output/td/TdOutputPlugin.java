@@ -466,7 +466,7 @@ public class TdOutputPlugin
         builder.setEndpoint(task.getEndpoint());
         builder.setUseSSL(task.getUseSsl());
         builder.setConnectTimeoutMillis(60000); // default 15000
-        builder.setIdleTimeoutMillis(60000); // default 60000
+        builder.setReadTimeoutMillis(60000); // default 60000
         builder.setRetryLimit(task.getRetryLimit());
         builder.setRetryInitialIntervalMillis(task.getRetryInitialIntervalMillis());
         builder.setRetryMaxIntervalMillis(task.getRetryMaxIntervalMillis());
