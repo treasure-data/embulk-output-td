@@ -179,6 +179,10 @@ public class TdOutputPlugin
         @ConfigDefault("90000")
         int getRetryMaxIntervalMillis();
 
+        @Config("pool_name")
+        @ConfigDefault("null")
+        public Optional<String> getPoolName();
+
         public boolean getDoUpload();
         public void setDoUpload(boolean doUpload);
 
@@ -633,7 +637,7 @@ public class TdOutputPlugin
                 }
             }
             // perform
-            client.performBulkImportSession(sessionName); // TODO use priority
+            client.performBulkImportSession(sessionName, task.getPoolName()); // TODO use priority
 
             // pass
         case PERFORMING:
