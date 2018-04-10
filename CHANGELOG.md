@@ -1,3 +1,7 @@
+## 0.5.0 - 2018-04-10
+
+* [maintenance] Support resource pool name [#81](https://github.com/treasure-data/embulk-output-td/pull/81)
+
 ## 0.4.2 - 2017-08-09
 
 * [maintenance] Fix Embulk version check logic bug [#79](https://github.com/treasure-data/embulk-output-td/pull/79)
