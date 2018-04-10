@@ -1,0 +1,13 @@
+machine:
+  java:
+    version: oraclejdk8
+
+test:
+  override:
+    - ./gradlew clean checkstyle check jacocoTestReport
+  post:
+    - cp -R build/reports/* $CIRCLE_ARTIFACTS
+
+notify:
+  webhooks:
+    - url: http://td-beda.herokuapp.com/circleci_callback
