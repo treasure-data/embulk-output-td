@@ -32,7 +32,7 @@ dependencies {
     provided    "org.embulk:embulk-standards:0.8.+"
     compile     "org.msgpack:msgpack-core:0.8.+"
     provided    "org.msgpack:msgpack-core:0.8.+"
-    compile    "com.treasuredata.client:td-client:0.7.41"
+    compile    "com.treasuredata.client:td-client:0.8.3"
 
     testCompile "junit:junit:4.+"
     testCompile "org.bigtesting:fixd:1.0.0"

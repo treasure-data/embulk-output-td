@@ -179,6 +179,10 @@ public class TdOutputPlugin
         @ConfigDefault("90000")
         int getRetryMaxIntervalMillis();
 
+        @Config("pool_name")
+        @ConfigDefault("null")
+        public Optional<String> getPoolName();
+
         public boolean getDoUpload();
         public void setDoUpload(boolean doUpload);
 
@@ -466,7 +470,7 @@ public class TdOutputPlugin
         builder.setEndpoint(task.getEndpoint());
         builder.setUseSSL(task.getUseSsl());
         builder.setConnectTimeoutMillis(60000); // default 15000
-        builder.setIdleTimeoutMillis(60000); // default 60000
+        builder.setReadTimeoutMillis(60000); // default 60000
         builder.setRetryLimit(task.getRetryLimit());
         builder.setRetryInitialIntervalMillis(task.getRetryInitialIntervalMillis());
         builder.setRetryMaxIntervalMillis(task.getRetryMaxIntervalMillis());
@@ -633,7 +637,7 @@ public class TdOutputPlugin
                 }
             }
             // perform
-            client.performBulkImportSession(sessionName); // TODO use priority
+            client.performBulkImportSession(sessionName, task.getPoolName()); // TODO use priority
 
             // pass
         case PERFORMING:
