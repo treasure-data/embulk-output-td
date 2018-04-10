@@ -2,7 +2,9 @@
 
 [Treasure Data Service](https://www.treasuredata.com/) output plugin for [Embulk](https://github.com/embulk/embulk)
 
-**NOTICE**: embulk-output-td v0.4.0+ only supports **Embulk v0.8.22+**.
+**NOTICE**:
+  * embulk-output-td v0.5.0+ requires Java 1.8 or higher. For Java7, use embulk-output-td v0.4.x
+  * embulk-output-td v0.4.0+ only supports **Embulk v0.8.22+**.
 
 ## Overview
 
