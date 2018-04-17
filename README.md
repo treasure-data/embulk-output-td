@@ -63,6 +63,8 @@ out:
   database: my_db
   table: my_table
   time_column: created_at
+  auto_create_table: true
+  mode: append
 ```
 
 ## Install
@@ -82,6 +84,8 @@ out:
   database: my_db
   table: my_table
   time_column: created_at
+  auto_create_table: true
+  mode: append
 ```
 
 
