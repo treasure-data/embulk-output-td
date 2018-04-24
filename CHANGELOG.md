@@ -1,3 +1,6 @@
+## 0.5.1 - 2018-04-24
+* [maintenance] Upgrade td-client-java v0.8.4 [#88](https://github.com/treasure-data/embulk-output-td/pull/88)
+
 ## 0.5.0 - 2018-04-10
 
 * [maintenance] Support resource pool name [#81](https://github.com/treasure-data/embulk-output-td/pull/81)
