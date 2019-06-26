@@ -9,16 +9,17 @@ import java.util.HashMap;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
 import javax.validation.constraints.Min;
 import javax.validation.constraints.Max;
 
+import ch.qos.logback.classic.Level;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
-import com.google.common.base.Predicates;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -27,11 +28,14 @@ import com.treasuredata.client.ProxyConfig;
 import com.treasuredata.client.TDClient;
 import com.treasuredata.client.TDClientBuilder;
 import com.treasuredata.client.TDClientHttpConflictException;
+import com.treasuredata.client.TDClientHttpException;
 import com.treasuredata.client.TDClientHttpNotFoundException;
+import com.treasuredata.client.TDHttpClient;
 import com.treasuredata.client.model.TDBulkImportSession;
 import com.treasuredata.client.model.TDBulkImportSession.ImportStatus;
 import com.treasuredata.client.model.TDColumn;
 import com.treasuredata.client.model.TDColumnType;
+import com.treasuredata.client.model.TDJob;
 import com.treasuredata.client.model.TDTable;
 import org.embulk.EmbulkVersion;
 import org.embulk.config.TaskReport;
@@ -852,14 +856,32 @@ public class TdOutputPlugin
         TDBulkImportSession importSession;
         while (true) {
             importSession = client.getBulkImportSession(sessionName);
+            Pattern statusPattern = Pattern.compile("mapreduce.*");
 
             if (importSession.getStatus() == expecting) {
                 return importSession;
 
             }
             else if (importSession.getStatus() == current) {
-                // in progress
+                log.info(String.format("Job ID: %s %s", importSession.getJobId(), current));
 
+                // Temporarily suppress log of td-client-java
+                ch.qos.logback.classic.Logger logTdClient = (ch.qos.logback.classic.Logger) Exec.getLogger(TDHttpClient.class);
+                logTdClient.setLevel(Level.OFF);
+                try {
+                    TDJob jobInfo = client.jobInfo(importSession.getJobId());
+                    Matcher matcher = statusPattern.matcher(jobInfo.getCmdOut());
+                    while (matcher.find()) {
+                        log.info(matcher.group());
+                    }
+                }
+                catch (TDClientHttpException e) {
+                    // Ignore: This Exception happens when plugin user is using write only key.
+                    // Write only key user doesn't have a permission to get job status/info
+                }
+                finally {
+                    logTdClient.setLevel(Level.INFO);
+                }
             }
             else {
                 throw new RuntimeException(String.format("Failed to %s bulk import session '%s'",
