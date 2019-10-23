@@ -9,6 +9,7 @@ import com.treasuredata.client.TDClientHttpConflictException;
 import com.treasuredata.client.TDClientHttpNotFoundException;
 import com.treasuredata.client.model.TDBulkImportSession;
 import com.treasuredata.client.model.TDBulkImportSession.ImportStatus;
+import com.treasuredata.client.model.TDColumn;
 import com.treasuredata.client.model.TDColumnType;
 import com.treasuredata.client.model.TDTable;
 import com.treasuredata.client.model.TDTableType;
@@ -23,6 +24,7 @@ import org.embulk.output.td.TdOutputPlugin.HttpProxyTask;
 import org.embulk.output.td.TdOutputPlugin.TimestampColumnOption;
 import org.embulk.output.td.TdOutputPlugin.UnixTimestampUnit;
 import org.embulk.output.td.writer.FieldWriterSet;
+import org.embulk.spi.Column;
 import org.embulk.spi.Exec;
 import org.embulk.spi.ExecSession;
 import org.embulk.spi.OutputPlugin;
@@ -34,8 +36,10 @@ import org.embulk.spi.type.Types;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.slf4j.Logger;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
@@ -52,9 +56,11 @@ import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
 public class TestTdOutputPlugin
@@ -538,6 +544,37 @@ public class TestTdOutputPlugin
 
         TransactionalPageOutput output = plugin.open(task.dump(), schema, 0);
         // Expect no error happens.
+    }
+
+    @Test
+    public void testUpdateSchemaWillPreserveIndex()
+    {
+        final String dbName = "test_db";
+        final String tblName = "test_tbl";
+        PluginTask task = mock(PluginTask.class);
+        doReturn(dbName).when(task).getDatabase();
+        doReturn(tblName).when(task).getTable();
+        doReturn(tblName).when(task).getLoadTargetTableName();
+
+        TDTable table = mock(TDTable.class);
+
+        TDClient client = mock(TDClient.class);
+        doReturn(table).when(client).showTable(anyString(), anyString());
+
+        Schema schema = schema("col3", Types.LONG, "col0", Types.STRING, "col1", Types.STRING);
+
+        // capture param of client append schema to check for columns order
+        ArgumentCaptor<List<TDColumn>> schemaCaptor = ArgumentCaptor.forClass((Class) List.class);
+        doNothing().when(client).appendTableSchema(anyString(), anyString(), schemaCaptor.capture());
+
+        plugin.updateSchema(client, schema,task);
+
+        List<Column> inputCols = schema.getColumns();
+        List<TDColumn> uploadedCols = schemaCaptor.getValue();
+
+        assertEquals(inputCols.get(0).getName(), uploadedCols.get(0).getName());
+        assertEquals(inputCols.get(1).getName(), uploadedCols.get(1).getName());
+        assertEquals(inputCols.get(2).getName(), uploadedCols.get(2).getName());
     }
 
     public static ConfigSource config()
