@@ -2,6 +2,7 @@ package org.embulk.output.td;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
@@ -691,7 +692,7 @@ public class TdOutputPlugin
         String databaseName = task.getDatabase();
         TDTable table = findTable(client, databaseName, task.getTable());
 
-        final Map<String, TDColumnType> guessedSchema = new HashMap<>();
+        final Map<String, TDColumnType> guessedSchema = new LinkedHashMap<>();
         inputSchema.visitColumns(new ColumnVisitor() {
             public void booleanColumn(Column column)
             {
