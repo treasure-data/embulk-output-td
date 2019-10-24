@@ -1,3 +1,7 @@
+
+## 0.5.2 - 2019-10-24
+* [maintenance] Fix columns order bug described in issue [91](https://github.com/treasure-data/embulk-output-td/issues/91) [#92](https://github.com/treasure-data/embulk-output-td/pull/92)
+
 ## 0.5.1 - 2018-04-24
 * [maintenance] Upgrade td-client-java v0.8.4 [#88](https://github.com/treasure-data/embulk-output-td/pull/88)
 
