@@ -19,11 +19,12 @@ import javax.validation.constraints.Max;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
-import com.google.common.base.Predicates;
 import com.google.common.base.Throwables;
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Lists;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.google.common.collect.Multimap;
 import com.treasuredata.client.ProxyConfig;
 import com.treasuredata.client.TDClient;
 import com.treasuredata.client.TDClientBuilder;
@@ -184,7 +185,11 @@ public class TdOutputPlugin
         @ConfigDefault("null")
         public Optional<String> getPoolName();
 
-        public boolean getDoUpload();
+        @Config("additional_http_headers")
+        @ConfigDefault("null")
+        Map<String, String> getAdditionalHttpHeaders();
+
+        boolean getDoUpload();
         public void setDoUpload(boolean doUpload);
 
         public String getSessionName();
@@ -476,12 +481,25 @@ public class TdOutputPlugin
         builder.setRetryInitialIntervalMillis(task.getRetryInitialIntervalMillis());
         builder.setRetryMaxIntervalMillis(task.getRetryMaxIntervalMillis());
 
+        if (task.getAdditionalHttpHeaders() != null) {
+            builder.setHeaders(buildMultiMapHeaders(task.getAdditionalHttpHeaders()));
+        }
+
         Optional<ProxyConfig> proxyConfig = newProxyConfig(task.getHttpProxy());
         if (proxyConfig.isPresent()) {
             builder.setProxy(proxyConfig.get());
         }
 
         return builder.build();
+    }
+
+    Multimap<String, String> buildMultiMapHeaders(Map<String, String> headers)
+    {
+        Multimap<String, String> multimap = ArrayListMultimap.create();
+        for (Map.Entry<String, String> entry : headers.entrySet()) {
+            multimap.put(entry.getKey(), entry.getValue());
+        }
+        return multimap;
     }
 
     @VisibleForTesting
