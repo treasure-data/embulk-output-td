@@ -1,29 +1,13 @@
 package org.embulk.output.td;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.HashMap;
-import java.nio.charset.StandardCharsets;
-import java.util.Properties;
-import java.util.UUID;
-import java.util.regex.Pattern;
-import java.util.zip.GZIPInputStream;
-
-import javax.validation.constraints.Min;
-import javax.validation.constraints.Max;
-
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Lists;
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.common.collect.Multimap;
 import com.treasuredata.client.ProxyConfig;
 import com.treasuredata.client.TDClient;
@@ -36,22 +20,22 @@ import com.treasuredata.client.model.TDColumn;
 import com.treasuredata.client.model.TDColumnType;
 import com.treasuredata.client.model.TDTable;
 import org.embulk.EmbulkVersion;
-import org.embulk.config.TaskReport;
 import org.embulk.config.Config;
 import org.embulk.config.ConfigDefault;
 import org.embulk.config.ConfigDiff;
-import org.embulk.config.ConfigSource;
 import org.embulk.config.ConfigException;
+import org.embulk.config.ConfigSource;
 import org.embulk.config.Task;
+import org.embulk.config.TaskReport;
 import org.embulk.config.TaskSource;
 import org.embulk.output.td.writer.FieldWriterSet;
+import org.embulk.spi.Column;
+import org.embulk.spi.ColumnVisitor;
 import org.embulk.spi.DataException;
 import org.embulk.spi.Exec;
-import org.embulk.spi.ColumnVisitor;
 import org.embulk.spi.ExecSession;
 import org.embulk.spi.OutputPlugin;
 import org.embulk.spi.Schema;
-import org.embulk.spi.Column;
 import org.embulk.spi.TransactionalPageOutput;
 import org.embulk.spi.time.Timestamp;
 import org.embulk.spi.time.TimestampFormatter;
@@ -60,6 +44,21 @@ import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessageUnpacker;
 import org.msgpack.value.Value;
 import org.slf4j.Logger;
+
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.UUID;
+import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
 
 import static com.google.common.base.Optional.fromNullable;
 import static java.lang.Integer.parseInt;
@@ -71,74 +70,74 @@ public class TdOutputPlugin
             extends Task, TimestampFormatter.Task
     {
         @Config("apikey")
-        public String getApiKey();
+        String getApiKey();
 
         @Config("endpoint")
         @ConfigDefault("\"api.treasuredata.com\"")
-        public String getEndpoint();
+        String getEndpoint();
 
         @Config("use_ssl")
         @ConfigDefault("true")
-        public boolean getUseSsl();
+        boolean getUseSsl();
 
         @Config("http_proxy")
         @ConfigDefault("null")
-        public Optional<HttpProxyTask> getHttpProxy();
+        Optional<HttpProxyTask> getHttpProxy();
 
         //  TODO connect_timeout, read_timeout, send_timeout
 
         @Config("mode")
         @ConfigDefault("\"append\"")
-        public Mode getMode();
+        Mode getMode();
 
         @Config("auto_create_table")
         @ConfigDefault("true")
-        public boolean getAutoCreateTable();
+        boolean getAutoCreateTable();
 
         @Config("database")
-        public String getDatabase();
+        String getDatabase();
 
         @Config("table")
-        public String getTable();
+        String getTable();
 
-        public void setLoadTargetTableName(String name);
-        public String getLoadTargetTableName();
+        void setLoadTargetTableName(String name);
+        String getLoadTargetTableName();
 
         @Config("session")
         @ConfigDefault("null")
-        public Optional<String> getSession();
+        Optional<String> getSession();
 
         @Config("default_timestamp_type_convert_to")
         @ConfigDefault("\"string\"")
-        public ConvertTimestampType getConvertTimestampType();
+        ConvertTimestampType getConvertTimestampType();
 
         @Config("time_column")
         @ConfigDefault("null")
-        public Optional<String> getTimeColumn();
+        Optional<String> getTimeColumn();
 
         @Config("time_value")
         @ConfigDefault("null")
-        public Optional<TimeValueConfig> getTimeValue(); // TODO allow timestamp format such as {from: "2015-01-01 00:00:00 UTC", to: "2015-01-02 00:00:00 UTC"} as well as unixtime integer
-        public void setTimeValue(Optional<TimeValueConfig> timeValue);
+        Optional<TimeValueConfig> getTimeValue(); // TODO allow timestamp format such as {from: "2015-01-01 00:00:00 UTC", to: "2015-01-02 00:00:00 UTC"} as well as unixtime integer
+        void setTimeValue(Optional<TimeValueConfig> timeValue);
 
         @Config("unix_timestamp_unit")
         @ConfigDefault("\"sec\"")
-        public UnixTimestampUnit getUnixTimestampUnit();
+        UnixTimestampUnit getUnixTimestampUnit();
 
         @Config("tmpdir")
         @ConfigDefault("null")
-        public Optional<String> getTempDir();
-        public void setTempDir(Optional<String> dir);
+        Optional<String> getTempDir();
+        void setTempDir(Optional<String> dir);
 
         @Config("upload_concurrency")
         @ConfigDefault("2")
         @Min(1)
         @Max(8)
-        public int getUploadConcurrency();
+        int getUploadConcurrency();
 
         @Config("file_split_size")
         @ConfigDefault("16384") // default 16MB (unit: kb)
-        public long getFileSplitSize();
+        long getFileSplitSize();
 
         @Override
         @Config("default_timestamp_format")
@@ -154,11 +153,11 @@ public class TdOutputPlugin
         //   * can parse SQL timestamp with microseconds like '2015-02-03 04:05:06.789012'
         //   * can parse SQL timestamp with milliseconds like '2015-02-03 04:05:06.789'
         @ConfigDefault("\"%Y-%m-%d %H:%M:%S.%3N\"")
-        public String getDefaultTimestampFormat();
+        String getDefaultTimestampFormat();
 
         @Config("column_options")
         @ConfigDefault("{}")
-        public Map<String, TimestampColumnOption> getColumnOptions();
+        Map<String, TimestampColumnOption> getColumnOptions();
 
         @Config("stop_on_invalid_record")
         @ConfigDefault("false")
@@ -183,17 +182,17 @@ public class TdOutputPlugin
 
         @Config("pool_name")
         @ConfigDefault("null")
-        public Optional<String> getPoolName();
+        Optional<String> getPoolName();
 
         @Config("additional_http_headers")
         @ConfigDefault("null")
         Map<String, String> getAdditionalHttpHeaders();
 
         boolean getDoUpload();
-        public void setDoUpload(boolean doUpload);
+        void setDoUpload(boolean doUpload);
 
-        public String getSessionName();
-        public void setSessionName(String session);
+        String getSessionName();
+        void setSessionName(String session);
     }
 
     public interface TimestampColumnOption
@@ -239,22 +238,22 @@ public class TdOutputPlugin
             extends Task
     {
         @Config("host")
-        public String getHost();
+        String getHost();
 
         @Config("port")
-        public int getPort();
+        int getPort();
 
         @Config("use_ssl")
         @ConfigDefault("false")
-        public boolean getUseSsl();
+        boolean getUseSsl();
 
         @Config("user")
         @ConfigDefault("null")
-        public Optional<String> getUser();
+        Optional<String> getUser();
 
         @Config("password")
         @ConfigDefault("null")
-        public Optional<String> getPassword();
+        Optional<String> getPassword();
     }
 
     public static enum ConvertTimestampType
@@ -794,7 +793,7 @@ public class TdOutputPlugin
         try {
             return client.showTable(databaseName, tableName);
         }
-        catch(TDClientHttpNotFoundException e) {
+        catch (TDClientHttpNotFoundException e) {
             return null;
         }
     }
