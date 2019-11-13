@@ -188,6 +188,8 @@ public class TdOutputPlugin
         @ConfigDefault("null")
         Optional<Map<String, String>> getAdditionalHttpHeaders();
 
+        @Config("port")
+        @ConfigDefault("null")
         Optional<Integer> getPort();
         void setPort(Optional<Integer> port);
 

@@ -582,7 +582,7 @@ public class TestTdOutputPlugin
         ArgumentCaptor<List<TDColumn>> schemaCaptor = ArgumentCaptor.forClass((Class) List.class);
         doNothing().when(client).appendTableSchema(anyString(), anyString(), schemaCaptor.capture());
 
-        plugin.updateSchema(client, schema,task);
+        plugin.updateSchema(client, schema, task);
 
         List<Column> inputCols = schema.getColumns();
         List<TDColumn> uploadedCols = schemaCaptor.getValue();
@@ -604,12 +604,10 @@ public class TestTdOutputPlugin
 
         PluginTask task = config()
                 .set("endpoint", "localhost")
+                .set("port", wireMockPort)
                 .set("use_ssl", "false") // ssl disabled for wiremock
                 .set("additional_http_headers", headers)
                 .loadConfig(PluginTask.class);
-
-        // send to Wiremock port
-        task.setPort(Optional.of(wireMockPort));
 
         stubFor(get(urlMatching(urlRegx))
                 .willReturn(aResponse()
