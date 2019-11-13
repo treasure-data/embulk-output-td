@@ -40,6 +40,7 @@
 - **retry_limit**: indicates how many retries are allowed (int, default: 20)
 - **retry_initial_interval_millis**: the initial intervals (int, default: 1000)
 - **retry_max_interval_millis**: the maximum intervals. The interval doubles every retry until retry_max_interval_millis is reached. (int, default: 90000)
+- **additional_http_headers**: add additional headers to the requests (a key & value map, default: null)
 
 ## Modes
 * **append**:
@@ -86,6 +87,22 @@ out:
   time_column: created_at
   auto_create_table: true
   mode: append
+```
+
+### Additional Http headers
+```yaml
+out:
+  type: td
+  apikey: <your apikey>
+  endpoint: api.treasuredata.com
+  database: my_db
+  table: my_table
+  time_column: created_at
+  auto_create_table: true
+  mode: append
+  additional_http_headers:
+    Content_Type: 'application/json'
+    foo: bar
 ```
 
 
