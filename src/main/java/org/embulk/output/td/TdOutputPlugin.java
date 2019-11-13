@@ -186,7 +186,7 @@ public class TdOutputPlugin
 
         @Config("additional_http_headers")
         @ConfigDefault("null")
-        Map<String, String> getAdditionalHttpHeaders();
+        Optional<Map<String, String>> getAdditionalHttpHeaders();
 
         boolean getDoUpload();
         void setDoUpload(boolean doUpload);
@@ -480,8 +480,8 @@ public class TdOutputPlugin
         builder.setRetryInitialIntervalMillis(task.getRetryInitialIntervalMillis());
         builder.setRetryMaxIntervalMillis(task.getRetryMaxIntervalMillis());
 
-        if (task.getAdditionalHttpHeaders() != null) {
-            builder.setHeaders(buildMultiMapHeaders(task.getAdditionalHttpHeaders()));
+        if (task.getAdditionalHttpHeaders().isPresent()) {
+            builder.setHeaders(buildMultiMapHeaders(task.getAdditionalHttpHeaders().get()));
         }
 
         Optional<ProxyConfig> proxyConfig = newProxyConfig(task.getHttpProxy());
