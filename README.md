@@ -41,6 +41,7 @@
 - **retry_initial_interval_millis**: the initial intervals (int, default: 1000)
 - **retry_max_interval_millis**: the maximum intervals. The interval doubles every retry until retry_max_interval_millis is reached. (int, default: 90000)
 - **additional_http_headers**: add additional headers to the requests (a key & value map, default: null)
+- **port**: set port for Http requests. By default will connect to port 443 or 80 if `use_ssl: false` (int, optional)
 
 ## Modes
 * **append**:
