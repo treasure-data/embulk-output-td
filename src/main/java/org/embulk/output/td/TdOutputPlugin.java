@@ -188,6 +188,9 @@ public class TdOutputPlugin
         @ConfigDefault("null")
         Optional<Map<String, String>> getAdditionalHttpHeaders();
 
+        Optional<Integer> getPort();
+        void setPort(Optional<Integer> port);
+
         boolean getDoUpload();
         void setDoUpload(boolean doUpload);
 
@@ -479,6 +482,10 @@ public class TdOutputPlugin
         builder.setRetryLimit(task.getRetryLimit());
         builder.setRetryInitialIntervalMillis(task.getRetryInitialIntervalMillis());
         builder.setRetryMaxIntervalMillis(task.getRetryMaxIntervalMillis());
+
+        if (task.getPort().isPresent()) {
+            builder.setPort(task.getPort().get());
+        }
 
         if (task.getAdditionalHttpHeaders().isPresent()) {
             builder.setHeaders(buildMultiMapHeaders(task.getAdditionalHttpHeaders().get()));
