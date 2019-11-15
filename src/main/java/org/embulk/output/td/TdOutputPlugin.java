@@ -501,7 +501,7 @@ public class TdOutputPlugin
         return builder.build();
     }
 
-    Multimap<String, String> buildMultiMapHeaders(Map<String, String> headers)
+    private Multimap<String, String> buildMultiMapHeaders(Map<String, String> headers)
     {
         Multimap<String, String> multimap = ArrayListMultimap.create();
         for (Map.Entry<String, String> entry : headers.entrySet()) {
