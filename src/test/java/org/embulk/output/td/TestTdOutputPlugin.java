@@ -1,5 +1,6 @@
 package org.embulk.output.td;
 
+import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -13,14 +14,16 @@ import com.treasuredata.client.model.TDColumn;
 import com.treasuredata.client.model.TDColumnType;
 import com.treasuredata.client.model.TDTable;
 import com.treasuredata.client.model.TDTableType;
+import org.apache.http.Header;
+import org.apache.http.message.BasicHeader;
 import org.embulk.EmbulkTestRuntime;
-import org.embulk.config.TaskReport;
 import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
+import org.embulk.config.TaskReport;
 import org.embulk.config.TaskSource;
-import org.embulk.output.td.TdOutputPlugin.PluginTask;
 import org.embulk.output.td.TdOutputPlugin.HttpProxyTask;
+import org.embulk.output.td.TdOutputPlugin.PluginTask;
 import org.embulk.output.td.TdOutputPlugin.TimestampColumnOption;
 import org.embulk.output.td.TdOutputPlugin.UnixTimestampUnit;
 import org.embulk.output.td.writer.FieldWriterSet;
@@ -39,10 +42,18 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.slf4j.Logger;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 import static com.treasuredata.client.model.TDBulkImportSession.ImportStatus.COMMITTED;
 import static com.treasuredata.client.model.TDBulkImportSession.ImportStatus.COMMITTING;
 import static com.treasuredata.client.model.TDBulkImportSession.ImportStatus.PERFORMING;
@@ -56,7 +67,6 @@ import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -67,6 +77,11 @@ public class TestTdOutputPlugin
 {
     @Rule
     public EmbulkTestRuntime runtime = new EmbulkTestRuntime();
+
+    private final int wireMockPort = 10888;
+
+    @Rule
+    public WireMockRule wireMockRule = new WireMockRule(options().port(wireMockPort), false);
 
     private ConfigSource config; // not mock
     private TdOutputPlugin plugin; // mock
@@ -567,7 +582,7 @@ public class TestTdOutputPlugin
         ArgumentCaptor<List<TDColumn>> schemaCaptor = ArgumentCaptor.forClass((Class) List.class);
         doNothing().when(client).appendTableSchema(anyString(), anyString(), schemaCaptor.capture());
 
-        plugin.updateSchema(client, schema,task);
+        plugin.updateSchema(client, schema, task);
 
         List<Column> inputCols = schema.getColumns();
         List<TDColumn> uploadedCols = schemaCaptor.getValue();
@@ -575,6 +590,51 @@ public class TestTdOutputPlugin
         assertEquals(inputCols.get(0).getName(), uploadedCols.get(0).getName());
         assertEquals(inputCols.get(1).getName(), uploadedCols.get(1).getName());
         assertEquals(inputCols.get(2).getName(), uploadedCols.get(2).getName());
+    }
+
+    @Test
+    public void testTDClientSendsExtraHeader()
+    {
+        final String urlRegx = "/v3/table/show/.*";
+        final Header header1 = new BasicHeader("h_name", "h_value");
+        final Header header2 = new BasicHeader("ABC", "XYZ");
+        final Map<String, String> headers = ImmutableMap.of(
+                                                header1.getName(), header1.getValue(),
+                                                header2.getName(), header2.getValue());
+
+        PluginTask task = config()
+                .set("endpoint", "localhost")
+                .set("port", wireMockPort)
+                .set("use_ssl", "false") // ssl disabled for wiremock
+                .set("additional_http_headers", headers)
+                .loadConfig(PluginTask.class);
+
+        stubFor(get(urlMatching(urlRegx))
+                .willReturn(aResponse()
+                        .withBody("{\n" +
+                                "  \"id\": 46732,\n" +
+                                "  \"name\": \"sample_csv11\",\n" +
+                                "  \"estimated_storage_size\": 0,\n" +
+                                "  \"counter_updated_at\": null,\n" +
+                                "  \"last_log_timestamp\": null,\n" +
+                                "  \"delete_protected\": false,\n" +
+                                "  \"created_at\": \"2019-10-23 07:49:02 UTC\",\n" +
+                                "  \"updated_at\": \"2019-10-23 07:51:13 UTC\",\n" +
+                                "  \"type\": \"log\",\n" +
+                                "  \"include_v\": true,\n" +
+                                "  \"count\": 15,\n" +
+                                "  \"schema\": \"[]\",\n" +
+                                "  \"expire_days\": null\n" +
+                                "}")));
+
+        TDClient client = plugin.newTDClient(task);
+
+        // issue an API request
+        plugin.validateTableExists(client, "tmp_db", "tmp_table");
+
+        verify(getRequestedFor(urlMatching(urlRegx))
+                .withHeader(header1.getName(), equalTo(header1.getValue()))
+                .withHeader(header2.getName(), equalTo(header2.getValue())));
     }
 
     public static ConfigSource config()
