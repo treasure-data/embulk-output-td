@@ -1,3 +1,6 @@
+## 0.5.3 - 2019-11-19
+* [new feature] Added additional headers to the Http requests [#94](https://github.com/treasure-data/embulk-output-td/pul/94) addressed by [#93](https://github.com/treasure-data/embulk-output-td/issues/93)
+* Also exposes `port` configuration (by default will use 80 and 443). 
 
 ## 0.5.2 - 2019-10-24
 * [maintenance] Fix columns order bug described in issue [91](https://github.com/treasure-data/embulk-output-td/issues/91) [#92](https://github.com/treasure-data/embulk-output-td/pull/92)
