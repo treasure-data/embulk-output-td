@@ -48,9 +48,12 @@ public class FieldWriterSet
 
     public static FieldWriterSet createWithValidation(Logger log, TdOutputPlugin.PluginTask task, Schema schema, boolean runStage)
     {
-        Optional<String> userDefinedPrimaryKeySourceColumnName = task.getTimeColumn();
+        boolean isIgnoreAlternativeTime = task.getIgnoreAlternativeTimeIfTimeExists()
+                && schema.getColumns().stream().anyMatch(column -> "time".equals(column.getName()));
+        Optional<String> userDefinedPrimaryKeySourceColumnName = isIgnoreAlternativeTime ? Optional.absent() : task.getTimeColumn();
         ConvertTimestampType convertTimestampType = task.getConvertTimestampType();
-        Optional<TimeValueConfig> timeValueConfig = task.getTimeValue();
+        Optional<TimeValueConfig> timeValueConfig = isIgnoreAlternativeTime ? Optional.absent() : task.getTimeValue();
+
         if (timeValueConfig.isPresent() && userDefinedPrimaryKeySourceColumnName.isPresent()) {
             throw new ConfigException("Setting both time_column and time_value is invalid");
         }

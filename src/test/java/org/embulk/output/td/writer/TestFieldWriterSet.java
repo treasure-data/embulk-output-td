@@ -133,6 +133,17 @@ public class TestFieldWriterSet
             assertTrue(writers.getFieldWriter(0) instanceof UnixTimestampFieldDuplicator); // c0
             assertTrue(writers.getFieldWriter(1) instanceof TimestampStringFieldWriter); // renamed column
         }
+
+        { // time_column option (long type) is ignored if time column exists and ignore_alternative_time is enabled
+            Schema schema = schema("_c0", Types.LONG, "time", Types.TIMESTAMP);
+            FieldWriterSet writers = FieldWriterSet.createWithValidation(log, pluginTask(config
+                    .deepCopy()
+                    .set("time_column", "_c0")
+                    .set("ignore_alternative_time_if_time_exists", true)), schema, false);
+
+            assertTrue(writers.getFieldWriter(0) instanceof LongFieldWriter); // c0
+            assertTrue(writers.getFieldWriter(1) instanceof TimestampLongFieldWriter); // time primary key
+        }
     }
 
     @Test
