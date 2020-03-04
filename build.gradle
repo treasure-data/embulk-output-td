@@ -1,44 +1,63 @@
 plugins {
-    id "com.jfrog.bintray" version "1.7"
-    id "com.github.jruby-gradle.base" version "0.1.5"
+    id "com.jfrog.bintray" version "1.8.4"
     id "java"
     id "maven" // install jar files to the local repo: $ gradle install
     id "maven-publish"
+    id "org.embulk.embulk-plugins" version "0.3.0"
 }
 
 apply from: 'gradle/check.gradle'
 
-import com.github.jrubygradle.JRubyExec
 repositories {
     mavenCentral()
     jcenter()
-    mavenLocal()
-}
-configurations {
-    provided
 }
 
 group = "org.embulk.output.td"
-version = "0.5.3"
+version = "0.6.0"
+description = "TreasureData output plugin is an Embulk plugin that loads records to TreasureData read by any input plugins. Search the input plugins by 'embulk-output' keyword."
 
-compileJava.options.encoding = 'UTF-8' // source encoding
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
-dependencies {
-    compile     "org.embulk:embulk-core:0.8.+"
-    provided    "org.embulk:embulk-core:0.8.+"
-    compile     "org.embulk:embulk-standards:0.8.+"
-    provided    "org.embulk:embulk-standards:0.8.+"
-    compile     "org.msgpack:msgpack-core:0.8.+"
-    provided    "org.msgpack:msgpack-core:0.8.+"
-    compile    "com.treasuredata.client:td-client:0.8.4"
+tasks.withType(JavaCompile) {
+    options.encoding = "UTF-8"
+    options.compilerArgs << "-Xlint:deprecation" << "-Xlint:unchecked"
+}
 
-    testCompile "junit:junit:4.+"
+dependencies {
+    compileOnly "org.embulk:embulk-core:0.9.23"
+
+    compile("com.treasuredata.client:td-client:0.8.4") {
+        // The "org.embulk.embulk-plugins" shows warnings about dependencies
+        // because Jackson-related libraries and Guava are not excluded.
+        //
+        // It is known, and accepted now, because embulk-output-td-0.5.3.gem
+        // included them while they conflict with embulk-core's dependencies.
+        //
+        // TODO: Resolve this.
+
+        exclude group: "com.google.inject", module: "guice"
+        exclude group: "com.google.inject.extensions", module: "guice-multibindings"
+        exclude group: "org.slf4j", module: "slf4j-api"
+        exclude group: "aopalliance", module: "aopalliance"
+        exclude group: "javax.inject", module: "javax.inject"
+    }
+
+    testCompile "junit:junit:4.13"
     testCompile "org.bigtesting:fixd:1.0.0"
-    testCompile  "org.embulk:embulk-core:0.8.+:tests"
+    testCompile "org.embulk:embulk-core:0.9.23:tests"
+    testCompile "org.embulk:embulk-standards:0.9.23"
+    testCompile "org.embulk:embulk-deps-buffer:0.9.23"
+    testCompile "org.embulk:embulk-deps-config:0.9.23"
     testCompile  "org.mockito:mockito-core:1.9.5"
     testCompile "com.github.tomakehurst:wiremock-jre8:2.25.1"
+}
+
+embulkPlugin {
+    mainClass = "org.embulk.output.td.TdOutputPlugin"
+    category = "output"
+    type = "td"
 }
 
 javadoc {
@@ -48,13 +67,27 @@ javadoc {
     }
 }
 
+// add tests/javadoc/source jar tasks as artifacts to be released
+task testsJar(type: Jar, dependsOn: classes) {
+    classifier = "tests"
+    from sourceSets.test.output
+}
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = "sources"
+    from sourceSets.main.allSource
+}
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = "javadoc"
+    from javadoc.destinationDir
+}
+
 // bintray and publishing
 bintray {
     // write at your bintray user name and api key to ~/.gradle/gradle.properties file:
     user = project.hasProperty('bintray_user') ? bintray_user : ''
     key = project.hasProperty('bintray_api_key') ? bintray_api_key : ''
 
-    publications = ['bintrayMavenRelease']
+    publications = [ "embulkMavenRelease" ]
     publish = true
 
     pkg {
@@ -74,9 +107,10 @@ bintray {
         }
     }
 }
+
 publishing {
     publications {
-        bintrayMavenRelease(MavenPublication) {
+        embulkMavenRelease(MavenPublication) {
             from components.java
             artifact testsJar
             artifact sourcesJar
@@ -85,66 +119,15 @@ publishing {
     }
 }
 
-task classpath(type: Copy, dependsOn: ["jar"]) {
-    doFirst { file("classpath").deleteDir() }
-    from (configurations.runtime - configurations.provided + files(jar.archivePath))
-    into "classpath"
-}
-clean { delete 'classpath' }
-
-// add tests/javadoc/source jar tasks as artifacts to be released
-task testsJar(type: Jar, dependsOn: classes) {
-    classifier = 'tests'
-    from sourceSets.test.output
-}
-task sourcesJar(type: Jar, dependsOn: classes) {
-    classifier = 'sources'
-    from sourceSets.main.allSource
-}
-task javadocJar(type: Jar, dependsOn: javadoc) {
-    classifier = 'javadoc'
-    from javadoc.destinationDir
+gem {
+    authors = [ "Muga Nishizawa" ]
+    email = [ "muga.nishizawa@gmail.com" ]
+    summary = "TreasureData output plugin for Embulk"
+    homepage = "https://github.com/treasure-data/embulk-output-td"
+    licenses = [ "Apache 2.0" ]
 }
 
-task gem(type: JRubyExec, dependsOn: ["gemspec", "classpath"]) {
-    jrubyArgs "-rrubygems/gem_runner", "-eGem::GemRunner.new.run(ARGV)", "build"
-    script "${project.name}.gemspec"
-    doLast { ant.move(file: "${project.name}-${project.version}.gem", todir: "pkg") }
+gemPush {
+    host = "https://rubygems.org"
+    outputs.upToDateWhen { false }
 }
-
-task gemPush(type: JRubyExec, dependsOn: ["gem"]) {
-    jrubyArgs "-rrubygems/gem_runner", "-eGem::GemRunner.new.run(ARGV)", "push"
-    script "pkg/${project.name}-${project.version}.gem"
-}
-
-task "package"(dependsOn: ["gemspec", "classpath"]) << {
-    println "> Build succeeded."
-    println "> You can run embulk with '-L ${file(".").absolutePath}' argument."
-}
-
-task gemspec {
-    ext.gemspecFile = file("${project.name}.gemspec")
-    inputs.file "build.gradle"
-    outputs.file gemspecFile
-    doLast { gemspecFile.write($/
-Gem::Specification.new do |spec|
-  spec.name          = "${project.name}"
-  spec.version       = "${project.version}"
-  spec.authors       = ["Muga Nishizawa"]
-  spec.summary       = %[TreasureData output plugin for Embulk]
-  spec.description   = %[TreasureData output plugin is an Embulk plugin that loads records to TreasureData read by any input plugins. Search the input plugins by 'embulk-output' keyword.]
-  spec.email         = ["muga.nishizawa@gmail.com"]
-  spec.licenses      = ["Apache 2.0"]
-  spec.homepage      = "https://github.com/treasure-data/embulk-output-td"
-
-  spec.files         = `git ls-files`.split("\n") + Dir["classpath/*.jar"]
-  spec.test_files    = spec.files.grep(%r"^(test|spec)/")
-  spec.require_paths = ["lib"]
-
-  spec.add_development_dependency 'bundler', ['~> 1.0']
-  spec.add_development_dependency 'rake', ['>= 10.0']
-end
-/$)
-    }
-}
-clean { delete "${project.name}.gemspec" }

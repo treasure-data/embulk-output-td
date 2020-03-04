@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
-import com.google.common.base.Throwables;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
@@ -44,6 +43,7 @@ import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessageUnpacker;
 import org.msgpack.value.Value;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -353,7 +353,7 @@ public class TdOutputPlugin
 
     public TdOutputPlugin()
     {
-        this.log = Exec.getLogger(getClass());
+        this.log = LoggerFactory.getLogger(getClass());
     }
 
     public ConfigDiff transaction(final ConfigSource config, final Schema schema, int processorCount,
@@ -936,7 +936,7 @@ public class TdOutputPlugin
 
         }
         catch (IOException e) {
-            throw Throwables.propagate(e);
+            throw new RuntimeException(e);
         }
         finally {
             if (closeLater != null) {

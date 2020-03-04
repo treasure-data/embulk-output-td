@@ -7,13 +7,6 @@ checkstyle {
     //configFile = rootProject.file('./checkstyle.xml') // default {project.projectDir}/config/checkstyle/checkstyle.xml
 }
 
-// FindBugs
-// @see https://docs.gradle.org/2.5/userguide/findbugs_plugin.html
-apply plugin: 'findbugs'
-findbugs {
-    ignoreFailures = true
-}
-
 // PMD
 // @see https://docs.gradle.org/2.5/userguide/pmd_plugin.html
 apply plugin: 'pmd'
@@ -27,7 +20,7 @@ tasks.withType(Pmd) {
 apply plugin: 'jacoco'
 jacocoTestReport { // will use td-client v0.6.x
     afterEvaluate {
-        classDirectories = files(classDirectories.files.collect {
+        classDirectories.from = files(classDirectories.files.collect {
             fileTree(dir: it, exclude: 'com/treasuredata/api/**')
         })
     }

@@ -2,7 +2,6 @@ package org.embulk.output.td;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Stopwatch;
-import com.google.common.base.Throwables;
 import com.treasuredata.client.TDClient;
 import org.embulk.config.TaskReport;
 import org.embulk.output.td.writer.FieldWriterSet;
@@ -12,6 +11,7 @@ import org.embulk.spi.PageReader;
 import org.embulk.spi.Schema;
 import org.embulk.spi.TransactionalPageOutput;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.Closeable;
@@ -44,7 +44,7 @@ public class RecordWriter
 
     public RecordWriter(TdOutputPlugin.PluginTask task, int taskIndex, TDClient client, FieldWriterSet fieldWriters)
     {
-        this.log = Exec.getLogger(getClass());
+        this.log = LoggerFactory.getLogger(getClass());
         this.client = checkNotNull(client);
         this.sessionName = task.getSessionName();
         this.taskIndex = taskIndex;
@@ -95,7 +95,7 @@ public class RecordWriter
 
         }
         catch (IOException e) {
-            throw Throwables.propagate(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -152,7 +152,7 @@ public class RecordWriter
             flush();
         }
         catch (IOException e) {
-            throw Throwables.propagate(e);
+            throw new RuntimeException(e);
         }
         finally {
             close();
@@ -180,7 +180,7 @@ public class RecordWriter
             }
         }
         catch (IOException e) {
-            throw Throwables.propagate(e);
+            throw new RuntimeException(e);
         }
     }
 

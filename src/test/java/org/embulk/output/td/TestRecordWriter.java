@@ -17,6 +17,7 @@ import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessageUnpacker;
 import org.msgpack.value.Value;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -52,7 +53,7 @@ public class TestRecordWriter
     @Before
     public void createResources()
     {
-        log = runtime.getExec().getLogger(TestRecordWriter.class);
+        log = LoggerFactory.getLogger(TestRecordWriter.class);
 
         schema = schema("time", Types.LONG, "_c0", Types.LONG, "_c1", Types.STRING,
                 "_c2", Types.BOOLEAN, "_c3", Types.DOUBLE, "_c4", Types.TIMESTAMP);

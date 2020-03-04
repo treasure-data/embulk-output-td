@@ -4,7 +4,6 @@ import java.io.IOException;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
-import com.google.common.base.Throwables;
 import org.embulk.config.ConfigException;
 import org.embulk.output.td.TdOutputPlugin;
 import org.embulk.output.td.TdOutputPlugin.ConvertTimestampType;
@@ -346,7 +345,7 @@ public class FieldWriterSet
             fieldWriters[column.getIndex()].writeKeyValue(builder, reader, column);
         }
         catch (IOException e) {
-            throw Throwables.propagate(e);
+            throw new RuntimeException(e);
         }
     }
 }
