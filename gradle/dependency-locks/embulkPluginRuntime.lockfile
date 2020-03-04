@@ -1,0 +1,17 @@
+# This is a Gradle generated file for dependency locking.
+# Manual edits can break the build and are not advised.
+# This file is expected to be part of source control.
+com.fasterxml.jackson.core:jackson-annotations:2.8.1
+com.fasterxml.jackson.core:jackson-core:2.8.1
+com.fasterxml.jackson.core:jackson-databind:2.8.1
+com.fasterxml.jackson.datatype:jackson-datatype-guava:2.8.1
+com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.8.1
+com.google.guava:guava:21.0
+com.googlecode.json-simple:json-simple:1.1.1
+com.squareup.okhttp3:okhttp-urlconnection:3.9.0
+com.squareup.okhttp3:okhttp:3.9.0
+com.squareup.okio:okio:1.13.0
+com.treasuredata.client:td-client:0.8.4
+junit:junit:4.10
+org.apache.geronimo.bundles:json:20090211_1
+org.hamcrest:hamcrest-core:1.1

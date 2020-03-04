@@ -4,13 +4,13 @@ import com.google.common.collect.ImmutableMap;
 import org.embulk.EmbulkTestRuntime;
 import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
-import org.embulk.spi.Exec;
 import org.embulk.spi.Schema;
 import org.embulk.spi.type.Types;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.embulk.output.td.TestTdOutputPlugin.config;
 import static org.embulk.output.td.TestTdOutputPlugin.pluginTask;
@@ -30,7 +30,7 @@ public class TestFieldWriterSet
     @Before
     public void createResources()
     {
-        log = Exec.getLogger(TestFieldWriterSet.class);
+        log = LoggerFactory.getLogger(TestFieldWriterSet.class);
         config = config();
     }
 
