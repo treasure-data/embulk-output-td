@@ -1,3 +1,6 @@
+## 0.6.1 - 2020-05-11
+* [new feature] Added new configuration `ignore_alternative_time_if_time_exists` [#95](https://github.com/treasure-data/embulk-output-td/pull/95)
+
 ## 0.6.0 - 2020-03-05
 * Build with the "org.embulk.embulk-plugins" Gradle plugin
 

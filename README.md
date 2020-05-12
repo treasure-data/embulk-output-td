@@ -42,6 +42,7 @@
 - **retry_max_interval_millis**: the maximum intervals. The interval doubles every retry until retry_max_interval_millis is reached. (int, default: 90000)
 - **additional_http_headers**: add additional headers to the requests (a key & value map, default: null)
 - **port**: set port for Http requests. By default will connect to port 443 or 80 if `use_ssl: false` (int, optional)
+- **ignore_alternative_time_if_time_exists**: ignore `time_column` and `time_value` in the configuration if a `time` column exists in the input schema. (boolean, default: false)
 
 ## Modes
 * **append**:
