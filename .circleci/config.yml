@@ -5,8 +5,8 @@ jobs:
       - image: circleci/openjdk:8u252
 
     steps:
-      - test:
+      - run:
           command: ./gradlew clean test
 
-      - check:
+      - run:
           command: ./gradlew check jacocoRootReport
