@@ -46,10 +46,11 @@ import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -609,8 +610,10 @@ public class TdOutputPlugin
         }
         else {
             Timestamp time = exec.getTransactionTime(); // TODO implement Exec.getTransactionUniqueName()
+            final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
+                    .withZone(ZoneOffset.UTC.normalized());
             return String.format("embulk_%s_%09d_%s",
-                    DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").withZone(ZoneId.of("UTC")).format(time.getInstant()),
+                    dateTimeFormatter.format(time.getInstant()),
                     time.getNano(), UUID.randomUUID().toString().replace('-', '_'));
         }
     }
