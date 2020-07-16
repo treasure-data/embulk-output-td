@@ -611,7 +611,7 @@ public class TdOutputPlugin
         else {
             Timestamp time = exec.getTransactionTime(); // TODO implement Exec.getTransactionUniqueName()
             final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
-                    .withZone(ZoneOffset.UTC.normalized());
+                    .withZone(ZoneOffset.UTC);
             return String.format("embulk_%s_%09d_%s",
                     dateTimeFormatter.format(time.getInstant()),
                     time.getNano(), UUID.randomUUID().toString().replace('-', '_'));
