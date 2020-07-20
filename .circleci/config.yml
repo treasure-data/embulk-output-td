@@ -1,0 +1,15 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/openjdk:8-jdk
+
+    steps:
+      - checkout
+      - run: ./gradlew clean check --console verbose
+      - run: ./gradlew jacocoTestReport --console verbose
+      - run: zip -9 -q -r reports.zip ./build/reports
+      - store_artifacts:
+          path: ./reports.zip
+      - store_test_results:
+          path: ./build/test-results/test

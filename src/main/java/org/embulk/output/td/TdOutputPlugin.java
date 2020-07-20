@@ -38,7 +38,6 @@ import org.embulk.spi.Schema;
 import org.embulk.spi.TransactionalPageOutput;
 import org.embulk.spi.time.Timestamp;
 import org.embulk.spi.time.TimestampFormatter;
-import org.joda.time.format.DateTimeFormat;
 import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessageUnpacker;
 import org.msgpack.value.Value;
@@ -47,9 +46,12 @@ import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -608,8 +610,10 @@ public class TdOutputPlugin
         }
         else {
             Timestamp time = exec.getTransactionTime(); // TODO implement Exec.getTransactionUniqueName()
+            final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
+                    .withZone(ZoneOffset.UTC);
             return String.format("embulk_%s_%09d_%s",
-                    DateTimeFormat.forPattern("yyyyMMdd_HHmmss").withZoneUTC().print(time.getEpochSecond() * 1000),
+                    dateTimeFormatter.format(time.getInstant()),
                     time.getNano(), UUID.randomUUID().toString().replace('-', '_'));
         }
     }
