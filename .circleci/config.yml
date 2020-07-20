@@ -12,4 +12,4 @@ jobs:
       - store_artifacts:
           path: ./reports.zip
       - store_test_results:
-          path: ./build/reports/tests
+          path: ./build/test-results/test
