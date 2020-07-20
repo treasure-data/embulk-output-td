@@ -2,8 +2,10 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/openjdk:8u252
+      - image: circleci/openjdk:8-jdk
 
     steps:
-      - run:
-          command: java -version
+      - checkout
+      - run: ./gradlew check jacocoRootReport
+      - store_artifacts:
+          path: ./build/reports
