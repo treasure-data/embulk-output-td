@@ -24,7 +24,7 @@ import org.embulk.config.TaskReport;
 import org.embulk.config.TaskSource;
 import org.embulk.output.td.TdOutputPlugin.HttpProxyTask;
 import org.embulk.output.td.TdOutputPlugin.PluginTask;
-import org.embulk.output.td.TdOutputPlugin.TimestampColumnOption;
+import org.embulk.output.td.TdOutputPlugin.ColumnOption;
 import org.embulk.output.td.TdOutputPlugin.UnixTimestampUnit;
 import org.embulk.output.td.writer.FieldWriterSet;
 import org.embulk.spi.Column;
@@ -249,8 +249,8 @@ public class TestTdOutputPlugin
     @Test
     public void checkColumnOptions()
     {
-        TimestampColumnOption columnOption = config.loadConfig(TimestampColumnOption.class);
-        ImmutableMap<String, TimestampColumnOption> columnOptions = ImmutableMap.of(
+        ColumnOption columnOption = config.loadConfig(ColumnOption.class);
+        ImmutableMap<String, ColumnOption> columnOptions = ImmutableMap.of(
                 "c0", columnOption, "c1", columnOption
         );
 

@@ -163,7 +163,7 @@ public class TdOutputPlugin
 
         @Config("column_options")
         @ConfigDefault("{}")
-        Map<String, TimestampColumnOption> getColumnOptions();
+        Map<String, ColumnOption> getColumnOptions();
 
         @Config("stop_on_invalid_record")
         @ConfigDefault("false")
@@ -206,8 +206,8 @@ public class TdOutputPlugin
         void setSessionName(String session);
     }
 
-    public interface TimestampColumnOption
-            extends Task, TimestampFormatter.TimestampColumnOption
+    public interface ColumnOption
+            extends Task, TimestampFormatter.TimestampColumnOption, TypeColumnOption
     {}
 
     public enum Mode
@@ -266,6 +266,21 @@ public class TdOutputPlugin
         @ConfigDefault("null")
         Optional<String> getPassword();
     }
+
+    // FIXME: Better class naming?
+    public interface TypeColumnOption
+    {
+        // keep backward compatible
+        @Config("type")
+        @ConfigDefault("null")
+        Optional<String> getType();
+
+        // keep backward compatible
+        @Config("value_type")
+        @ConfigDefault("null")
+        Optional<String> getValueType();
+    }
+
 
     public static enum ConvertTimestampType
     {
@@ -471,7 +486,7 @@ public class TdOutputPlugin
     }
 
     @VisibleForTesting
-    void checkColumnOptions(Schema schema, Map<String, TimestampColumnOption> columnOptions)
+    void checkColumnOptions(Schema schema, Map<String, ColumnOption> columnOptions)
     {
         for (String columnName : columnOptions.keySet()) {
             schema.lookupColumn(columnName); // throws SchemaConfigException
