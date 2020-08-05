@@ -593,6 +593,38 @@ public class TestTdOutputPlugin
     }
 
     @Test
+    public void testUpdateSchemaWillApplyColumnOption() {
+        final String dbName = "test_db";
+        final String tblName = "test_tbl";
+        PluginTask task = mock(PluginTask.class);
+        doReturn(dbName).when(task).getDatabase();
+        doReturn(tblName).when(task).getTable();
+        doReturn(tblName).when(task).getLoadTargetTableName();
+
+        TDTable table = mock(TDTable.class);
+        TDClient client = mock(TDClient.class);
+        doReturn(table).when(client).showTable(anyString(), anyString());
+
+        Schema schema = schema("col1", Types.LONG, "col2", Types.JSON, "col3", Types.JSON, "col4", Types.JSON);
+        // capture param of client append schema to check for columns order
+        ArgumentCaptor<List<TDColumn>> schemaCaptor = ArgumentCaptor.forClass((Class) List.class);
+        doNothing().when(client).appendTableSchema(anyString(), anyString(), schemaCaptor.capture());
+
+        ImmutableMap<String, ColumnOption> columnOptions = ImmutableMap.of(
+                "col2", Exec.newConfigSource().set("type", "array<string>").set("value_type", "array").loadConfig(ColumnOption.class),
+                "col3", Exec.newConfigSource().set("type", "string").set("value_type", "map").loadConfig(ColumnOption.class)
+        );
+        doReturn(columnOptions).when(task).getColumnOptions();
+
+        plugin.updateSchema(client, schema, task);
+
+        List<TDColumn> uploadedCols = schemaCaptor.getValue();
+        assertEquals(4, uploadedCols.size());
+        assertEquals("array<string>", uploadedCols.get(1).getType().toString());
+        assertEquals("string", uploadedCols.get(2).getType().toString());
+    }
+
+    @Test
     public void testTDClientSendsExtraHeader()
     {
         final String urlRegx = "/v3/table/show/.*";

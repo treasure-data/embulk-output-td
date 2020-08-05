@@ -35,6 +35,8 @@
 - **default_timezone**: default timezone (string, default='UTC')
 - **default_timestamp_format**: default timestamp format (string, default=`%Y-%m-%d %H:%M:%S.%6N`)
 - **column_options**: advanced: a key-value pairs where key is a column name and value is options for the column.
+  - **type**: This type option controls the type of the new column added to TD's table (e.g. `array<string>`). Available options: `int`, `long`, `float`, `double`, `string`, `array<int>`, `array<long>`, `array<double>`, `array<string>`, `array<array<int>>`, `map<int, long>`. Ideally `array` and `map` is container type, thus it can contain another type inside e.g. array of map. (string, optional)
+  - **value_type**: This value_type option controls the type of the value to read from Embulk and write to Treasure Data. Available options are: `boolean`, `long`, `double`, `string`, `timestamp`, `array`, `map`. (string, optional)
   - **timezone**: If input column type (embulk type) is timestamp, this plugin needs to format the timestamp value into a SQL string. In this cases, this timezone option is used to control the timezone. (string, value of default_timezone option is used by default)
   - **format**: If input column type (embulk type) is timestamp, this plugin needs to format the timestamp value into a string. This timestamp_format option is used to control the format of the timestamp. (string, value of default_timestamp_format option is used by default)
 - **retry_limit**: indicates how many retries are allowed (int, default: 20)

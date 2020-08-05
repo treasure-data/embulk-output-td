@@ -7,6 +7,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.treasuredata.client.ProxyConfig;
 import com.treasuredata.client.TDClient;
@@ -791,7 +792,9 @@ public class TdOutputPlugin
             newSchema = Lists.newArrayList();
         }
 
-        for (Map.Entry<String, TDColumnType> pair : guessedSchema.entrySet()) {
+        // FIXME: Better variable name?
+        final Map<String, TDColumnType> appliedColumnOptionSchema = applyColumnOptions(guessedSchema, task.getColumnOptions());
+        for (Map.Entry<String, TDColumnType> pair : appliedColumnOptionSchema.entrySet()) {
             String key = renameColumn(pair.getKey());
 
             if (!usedNames.containsKey(key)) {
@@ -807,7 +810,7 @@ public class TdOutputPlugin
         }
 
         client.appendTableSchema(databaseName, task.getLoadTargetTableName(), newSchema);
-        return guessedSchema;
+        return appliedColumnOptionSchema;
     }
 
     void printNewAddedColumns(Map<String, TDColumnType> newColumns)
@@ -893,6 +896,20 @@ public class TdOutputPlugin
         if (!isValidVersion) {
             throw new ConfigException("embulk-output-td v0.4.x+ only supports Embulk v0.8.22 or higher versions");
         }
+    }
+
+    // FIXME: apply schema column option is a better name?
+    private Map<String, TDColumnType> applyColumnOptions(Map<String, TDColumnType> schema, Map<String, ColumnOption> columnOptions) {
+        return Maps.asMap(schema.keySet(), key -> {
+            if (columnOptions.containsKey(key)) {
+                Optional<String> columnType = columnOptions.get(key).getType();
+                if (columnType.isPresent()) {
+                    return TDColumnType.parseColumnType(columnType.get());
+                }
+            }
+
+            return schema.get(key);
+        });
     }
 
     @VisibleForTesting

@@ -1,5 +1,7 @@
 package org.embulk.output.td.writer;
 
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableMap;
 import org.embulk.EmbulkTestRuntime;
 import org.embulk.config.ConfigException;
@@ -207,5 +209,39 @@ public class TestFieldWriterSet
 
         assertTrue(writers.getFieldWriter(0) instanceof TimestampStringFieldWriter); // c0
         assertTrue(writers.getFieldWriter(1) instanceof LongFieldWriter); // c1
+    }
+
+    @Test
+    public void useColumnOptions() {
+        Schema schema = schema("col_long", Types.LONG,
+                "col_val_type_double", Types.JSON,
+                "col_val_type_long",Types.STRING,
+                "col_val_type_boolean", Types.STRING,
+                "col_val_type_string", Types.JSON,
+                "col_val_type_timestamp", Types.STRING
+                );
+        ImmutableMap<String, ObjectNode> columnOptions = ImmutableMap.of(
+                "col_val_type_double", newObjectNode().put("type", "double").put("value_type", "double"),
+                "col_val_type_long", newObjectNode().put("type", "long").put("value_type", "long"),
+                "col_val_type_boolean", newObjectNode().put("type", "boolean").put("value_type", "boolean"),
+                "col_val_type_string", newObjectNode().put("type", "string").put("value_type", "string"),
+                "col_val_type_timestamp", newObjectNode().put("type", "timestamp").put("value_type", "timestamp")
+        );
+
+        FieldWriterSet writers = FieldWriterSet.createWithValidation(log, pluginTask(config.deepCopy()
+                .set("column_options", columnOptions)
+                .set("default_timestamp_type_convert_to", "string")), schema, false);
+
+        assertTrue(writers.getFieldWriter(0) instanceof LongFieldWriter);
+        assertTrue(writers.getFieldWriter(1) instanceof DoubleFieldWriter);
+        assertTrue(writers.getFieldWriter(2) instanceof LongFieldWriter);
+        assertTrue(writers.getFieldWriter(3) instanceof BooleanFieldWriter);
+        assertTrue(writers.getFieldWriter(4) instanceof StringFieldWriter);
+        assertTrue(writers.getFieldWriter(5) instanceof TimestampStringFieldWriter);
+    }
+
+    static ObjectNode newObjectNode()
+    {
+        return JsonNodeFactory.instance.objectNode();
     }
 }

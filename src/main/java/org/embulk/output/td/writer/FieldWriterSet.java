@@ -11,6 +11,7 @@ import org.embulk.output.td.TimeValueConfig;
 import org.embulk.output.td.TimeValueGenerator;
 import org.embulk.spi.Column;
 import org.embulk.spi.ColumnVisitor;
+import org.embulk.spi.DataException;
 import org.embulk.spi.Exec;
 import org.embulk.spi.PageReader;
 import org.embulk.spi.Schema;
@@ -22,6 +23,7 @@ import org.embulk.spi.type.LongType;
 import org.embulk.spi.type.StringType;
 import org.embulk.spi.type.TimestampType;
 import org.embulk.spi.type.Type;
+import org.embulk.spi.type.Types;
 import org.embulk.spi.util.Timestamps;
 import org.embulk.output.td.MsgpackGZFileBuilder;
 import org.slf4j.Logger;
@@ -32,6 +34,7 @@ public class FieldWriterSet
     {
         PRIMARY_KEY,
         SIMPLE_VALUE,
+        ADVANCED_VALUE,
         DUPLICATE_PRIMARY_KEY;
     }
 
@@ -104,6 +107,9 @@ public class FieldWriterSet
                     mode = ColumnWriterMode.PRIMARY_KEY;
                 }
             }
+            else if (task.getColumnOptions().containsKey(columnName) && task.getColumnOptions().get(columnName).getValueType().isPresent()) {
+                mode = ColumnWriterMode.ADVANCED_VALUE;
+            }
             else {
                 mode = ColumnWriterMode.SIMPLE_VALUE;
             }
@@ -137,6 +143,10 @@ public class FieldWriterSet
 
                 case SIMPLE_VALUE:
                     writer = newSimpleFieldWriter(columnName, columnType, convertTimestampType, timestampFormatters[i]);
+                    break;
+
+                case ADVANCED_VALUE:
+                    writer = newAdvancedFieldWriter(columnName, task.getColumnOptions().get(columnName).getValueType().get(), convertTimestampType, timestampFormatters[i]);
                     break;
 
                 case DUPLICATE_PRIMARY_KEY:
@@ -256,6 +266,28 @@ public class FieldWriterSet
         }
         else {
             throw new ConfigException("Unsupported type: " + columnType);
+        }
+    }
+
+    protected static FieldWriter newAdvancedFieldWriter(String columnName, String valueType, ConvertTimestampType convertTimestampType, TimestampFormatter timestampFormatter) {
+        switch (valueType) {
+            case "string":
+                return new StringFieldWriter(columnName);
+            case "long":
+                return new LongFieldWriter(columnName);
+            case "boolean":
+                return new BooleanFieldWriter(columnName);
+            case "double":
+                return new DoubleFieldWriter(columnName);
+            case "timestamp":
+                return newSimpleTimestampFieldWriter(columnName, Types.TIMESTAMP, convertTimestampType, timestampFormatter);
+            case "array":
+                return new ArrayFieldWriter(columnName);
+            case "map":
+                return new MapFieldWriter(columnName);
+
+            default:
+                throw new DataException("Unsupported value: " + valueType);
         }
     }
 
