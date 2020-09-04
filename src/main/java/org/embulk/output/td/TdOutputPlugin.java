@@ -32,7 +32,6 @@ import org.embulk.spi.Column;
 import org.embulk.spi.ColumnVisitor;
 import org.embulk.spi.DataException;
 import org.embulk.spi.Exec;
-import org.embulk.spi.ExecSession;
 import org.embulk.spi.OutputPlugin;
 import org.embulk.spi.Schema;
 import org.embulk.spi.TransactionalPageOutput;
@@ -371,7 +370,7 @@ public class TdOutputPlugin
         checkColumnOptions(schema, task.getColumnOptions());
 
         // generate session name
-        task.setSessionName(buildBulkImportSessionName(task, Exec.session()));
+        task.setSessionName(buildBulkImportSessionName(task));
 
         if (!task.getTempDir().isPresent()) {
             task.setTempDir(Optional.of(getEnvironmentTempDirectory()));
@@ -603,13 +602,13 @@ public class TdOutputPlugin
     }
 
     @VisibleForTesting
-    String buildBulkImportSessionName(PluginTask task, ExecSession exec)
+    String buildBulkImportSessionName(PluginTask task)
     {
         if (task.getSession().isPresent()) {
             return task.getSession().get();
         }
         else {
-            Timestamp time = exec.getTransactionTime(); // TODO implement Exec.getTransactionUniqueName()
+            Timestamp time = Exec.getTransactionTime(); // TODO implement Exec.getTransactionUniqueName()
             final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
                     .withZone(ZoneOffset.UTC);
             return String.format("embulk_%s_%09d_%s",

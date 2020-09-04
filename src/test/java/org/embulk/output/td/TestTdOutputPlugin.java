@@ -29,7 +29,6 @@ import org.embulk.output.td.TdOutputPlugin.UnixTimestampUnit;
 import org.embulk.output.td.writer.FieldWriterSet;
 import org.embulk.spi.Column;
 import org.embulk.spi.Exec;
-import org.embulk.spi.ExecSession;
 import org.embulk.spi.OutputPlugin;
 import org.embulk.spi.Schema;
 import org.embulk.spi.SchemaConfigException;
@@ -174,7 +173,7 @@ public class TestTdOutputPlugin
     @Test
     public void transaction()
     {
-        doReturn("session_name").when(plugin).buildBulkImportSessionName(any(PluginTask.class), any(ExecSession.class));
+        doReturn("session_name").when(plugin).buildBulkImportSessionName(any(PluginTask.class));
         ConfigDiff configDiff = Exec.newConfigDiff().set("last_session", "session_name");
         doReturn(configDiff).when(plugin).doRun(any(TDClient.class), any(Schema.class), any(PluginTask.class), any(OutputPlugin.Control.class));
         Schema schema = schema("time", Types.LONG, "c0", Types.STRING, "c1", Types.STRING);
@@ -375,12 +374,12 @@ public class TestTdOutputPlugin
     {
         { // session option is specified
             PluginTask task = pluginTask(config.deepCopy().set("session", "my_session"));
-            assertEquals("my_session", plugin.buildBulkImportSessionName(task, Exec.session()));
+            assertEquals("my_session", plugin.buildBulkImportSessionName(task));
         }
 
         { // session is not specified as option
             PluginTask task = pluginTask(config);
-            assertTrue(plugin.buildBulkImportSessionName(task, Exec.session()).startsWith("embulk_"));
+            assertTrue(plugin.buildBulkImportSessionName(task).startsWith("embulk_"));
         }
     }
 
