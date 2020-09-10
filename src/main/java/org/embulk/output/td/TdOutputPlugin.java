@@ -898,8 +898,8 @@ public class TdOutputPlugin
         }
     }
 
-    // FIXME: apply schema column option is a better name?
-    private Map<String, TDColumnType> applyColumnOptions(Map<String, TDColumnType> schema, Map<String, ColumnOption> columnOptions) {
+    private Map<String, TDColumnType> applyColumnOptions(Map<String, TDColumnType> schema, Map<String, ColumnOption> columnOptions)
+    {
         return Maps.asMap(schema.keySet(), key -> {
             if (columnOptions.containsKey(key)) {
                 Optional<String> columnType = columnOptions.get(key).getType();
