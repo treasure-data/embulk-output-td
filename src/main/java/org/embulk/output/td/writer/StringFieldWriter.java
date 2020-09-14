@@ -51,6 +51,6 @@ public class StringFieldWriter
     @Override
     protected void writeJsonValue(MsgpackGZFileBuilder builder, PageReader reader, Column column) throws IOException
     {
-        builder.writeString(reader.getJson(column).toJson());
+        builder.writeString(reader.getJson(column).toString());
     }
 }
