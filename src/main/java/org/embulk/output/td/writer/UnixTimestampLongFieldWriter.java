@@ -7,7 +7,7 @@ import org.embulk.spi.PageReader;
 import java.io.IOException;
 
 public class UnixTimestampLongFieldWriter
-        extends FieldWriter
+        extends LongFieldWriter
 {
     private final int fractionUnit;
 
@@ -18,7 +18,7 @@ public class UnixTimestampLongFieldWriter
     }
 
     @Override
-    public void writeValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
+    public void writeLongValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
             throws IOException
     {
         builder.writeLong(reader.getLong(column) / fractionUnit);

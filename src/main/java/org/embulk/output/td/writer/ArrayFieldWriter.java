@@ -7,7 +7,7 @@ import org.embulk.spi.PageReader;
 import java.io.IOException;
 
 public class ArrayFieldWriter
-        extends FieldWriter
+        extends JsonFieldWriter
 {
     public ArrayFieldWriter(String keyName)
     {
@@ -15,7 +15,7 @@ public class ArrayFieldWriter
     }
 
     @Override
-    public void writeValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
+    public void writeJsonValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
             throws IOException
     {
         builder.writeValue(reader.getJson(column));

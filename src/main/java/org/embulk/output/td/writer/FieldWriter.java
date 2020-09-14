@@ -3,6 +3,7 @@ package org.embulk.output.td.writer;
 import org.embulk.output.td.MsgpackGZFileBuilder;
 import org.embulk.spi.Column;
 import org.embulk.spi.PageReader;
+import org.embulk.spi.type.Types;
 
 import java.io.IOException;
 
@@ -22,9 +23,26 @@ public abstract class FieldWriter
         writeKey(builder);
         if (reader.isNull(column)) {
             builder.writeNil();
+            return;
+        }
+
+        if (column.getType() == Types.BOOLEAN) {
+            writeBooleanValue(builder, reader, column);
+        }
+        else if (column.getType() == Types.LONG) {
+            writeLongValue(builder, reader, column);
+        }
+        else if (column.getType() == Types.DOUBLE) {
+            writeDoubleValue(builder, reader, column);
+        }
+        else if (column.getType() == Types.STRING) {
+            writeStringValue(builder, reader, column);
+        }
+        else if (column.getType() == Types.TIMESTAMP) {
+            writeTimestampValue(builder, reader, column);
         }
         else {
-            writeValue(builder, reader, column);
+            writeJsonValue(builder, reader, column);
         }
     }
 
@@ -34,6 +52,21 @@ public abstract class FieldWriter
         builder.writeString(keyName);
     }
 
-    protected abstract void writeValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
+    protected abstract void writeBooleanValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
+            throws IOException;
+
+    protected abstract void writeLongValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
+            throws IOException;
+
+    protected abstract void writeDoubleValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
+            throws IOException;
+
+    protected abstract void writeStringValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
+            throws IOException;
+
+    protected abstract void writeTimestampValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
+            throws IOException;
+
+    protected abstract void writeJsonValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
             throws IOException;
 }

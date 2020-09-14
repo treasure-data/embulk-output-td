@@ -132,7 +132,7 @@ public class FieldWriterSet
                         foundPrimaryKey = true;
                     }
                     else if (columnType instanceof TimestampType) {
-                        writer = new TimestampLongFieldWriter(columnName);
+                        writer = new LongFieldWriter(columnName);
                         foundPrimaryKey = true;
                     }
                     else {
@@ -256,7 +256,7 @@ public class FieldWriterSet
             return new DoubleFieldWriter(columnName);
         }
         else if (columnType instanceof StringType) {
-            return new StringFieldWriter(columnName);
+            return new StringFieldWriter(columnName, timestampFormatter);
         }
         else if (columnType instanceof TimestampType) {
             return newSimpleTimestampFieldWriter(columnName, columnType, convertTimestampType, timestampFormatter);
@@ -269,10 +269,11 @@ public class FieldWriterSet
         }
     }
 
-    protected static FieldWriter newAdvancedFieldWriter(String columnName, String valueType, ConvertTimestampType convertTimestampType, TimestampFormatter timestampFormatter) {
+    protected static FieldWriter newAdvancedFieldWriter(String columnName, String valueType, ConvertTimestampType convertTimestampType, TimestampFormatter timestampFormatter)
+    {
         switch (valueType) {
             case "string":
-                return new StringFieldWriter(columnName);
+                return new StringFieldWriter(columnName, timestampFormatter);
             case "long":
                 return new LongFieldWriter(columnName);
             case "boolean":
@@ -295,10 +296,10 @@ public class FieldWriterSet
     {
         switch (convertTimestampType) {
         case STRING:
-            return new TimestampStringFieldWriter(timestampFormatter, columnName);
+            return new StringFieldWriter(columnName, timestampFormatter);
 
         case SEC:
-            return new TimestampLongFieldWriter(columnName);
+            return new LongFieldWriter(columnName);
 
         default:
             // Thread of control doesn't come here but, just in case, it throws ConfigException.
