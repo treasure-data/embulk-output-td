@@ -7,6 +7,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.treasuredata.client.ProxyConfig;
 import com.treasuredata.client.TDClient;
@@ -162,7 +163,7 @@ public class TdOutputPlugin
 
         @Config("column_options")
         @ConfigDefault("{}")
-        Map<String, TimestampColumnOption> getColumnOptions();
+        Map<String, ColumnOption> getColumnOptions();
 
         @Config("stop_on_invalid_record")
         @ConfigDefault("false")
@@ -205,8 +206,8 @@ public class TdOutputPlugin
         void setSessionName(String session);
     }
 
-    public interface TimestampColumnOption
-            extends Task, TimestampFormatter.TimestampColumnOption
+    public interface ColumnOption
+            extends Task, TimestampFormatter.TimestampColumnOption, TypeColumnOption
     {}
 
     public enum Mode
@@ -265,6 +266,21 @@ public class TdOutputPlugin
         @ConfigDefault("null")
         Optional<String> getPassword();
     }
+
+    // FIXME: Better class naming?
+    public interface TypeColumnOption
+    {
+        // keep backward compatible
+        @Config("type")
+        @ConfigDefault("null")
+        Optional<String> getType();
+
+        // keep backward compatible
+        @Config("value_type")
+        @ConfigDefault("null")
+        Optional<String> getValueType();
+    }
+
 
     public static enum ConvertTimestampType
     {
@@ -470,7 +486,7 @@ public class TdOutputPlugin
     }
 
     @VisibleForTesting
-    void checkColumnOptions(Schema schema, Map<String, TimestampColumnOption> columnOptions)
+    void checkColumnOptions(Schema schema, Map<String, ColumnOption> columnOptions)
     {
         for (String columnName : columnOptions.keySet()) {
             schema.lookupColumn(columnName); // throws SchemaConfigException
@@ -775,7 +791,9 @@ public class TdOutputPlugin
             newSchema = Lists.newArrayList();
         }
 
-        for (Map.Entry<String, TDColumnType> pair : guessedSchema.entrySet()) {
+        // FIXME: Better variable name?
+        final Map<String, TDColumnType> appliedColumnOptionSchema = applyColumnOptions(guessedSchema, task.getColumnOptions());
+        for (Map.Entry<String, TDColumnType> pair : appliedColumnOptionSchema.entrySet()) {
             String key = renameColumn(pair.getKey());
 
             if (!usedNames.containsKey(key)) {
@@ -791,7 +809,7 @@ public class TdOutputPlugin
         }
 
         client.appendTableSchema(databaseName, task.getLoadTargetTableName(), newSchema);
-        return guessedSchema;
+        return appliedColumnOptionSchema;
     }
 
     void printNewAddedColumns(Map<String, TDColumnType> newColumns)
@@ -877,6 +895,20 @@ public class TdOutputPlugin
         if (!isValidVersion) {
             throw new ConfigException("embulk-output-td v0.4.x+ only supports Embulk v0.8.22 or higher versions");
         }
+    }
+
+    private Map<String, TDColumnType> applyColumnOptions(Map<String, TDColumnType> schema, Map<String, ColumnOption> columnOptions)
+    {
+        return Maps.asMap(schema.keySet(), key -> {
+            if (columnOptions.containsKey(key)) {
+                Optional<String> columnType = columnOptions.get(key).getType();
+                if (columnType.isPresent()) {
+                    return TDColumnType.parseColumnType(columnType.get());
+                }
+            }
+
+            return schema.get(key);
+        });
     }
 
     @VisibleForTesting

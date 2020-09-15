@@ -2,6 +2,7 @@ package org.embulk.output.td;
 
 import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessagePacker;
+import org.msgpack.value.Value;
 
 import java.io.BufferedOutputStream;
 import java.io.Closeable;
@@ -155,5 +156,9 @@ public class MsgpackGZFileBuilder
             throws IOException
     {
         packer.packDouble(v);
+    }
+
+    public void writeValue(Value v) throws IOException {
+        packer.packValue(v);
     }
 }

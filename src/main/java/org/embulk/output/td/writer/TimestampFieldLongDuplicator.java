@@ -10,12 +10,12 @@ public class TimestampFieldLongDuplicator
         implements IFieldWriter
 {
     private final IFieldWriter nextWriter;
-    private final TimestampLongFieldWriter timeFieldWriter;
+    private final LongFieldWriter timeFieldWriter;
 
     public TimestampFieldLongDuplicator(IFieldWriter nextWriter, String duplicateKeyName)
     {
         this.nextWriter = nextWriter;
-        timeFieldWriter = new TimestampLongFieldWriter(duplicateKeyName);
+        timeFieldWriter = new LongFieldWriter(duplicateKeyName);
     }
 
     public void writeKeyValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
