@@ -1,3 +1,6 @@
+## 0.7.0 - 2020-09-15
+* [new feature] Added additional `column_options` configurations to customize TD's type [#98](https://github.com/treasure-data/embulk-output-td/pull/98)
+
 ## 0.6.1 - 2020-05-11
 * [new feature] Added new configuration `ignore_alternative_time_if_time_exists` [#95](https://github.com/treasure-data/embulk-output-td/pull/95)
 
