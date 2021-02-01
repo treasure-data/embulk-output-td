@@ -782,6 +782,10 @@ public class TdOutputPlugin
             }
         }
         guessedSchema.remove("time"); // don't change type of 'time' column
+        // 'v' column is special column in TD's table, it is reserved column to be used in Hive
+        // by executing `SELECT *` query, thus it must not be appended
+        // otherwise 422 response code will be responded.
+        guessedSchema.remove("v");
 
         List<TDColumn> newSchema;
         if (task.getMode() != Mode.REPLACE) {
@@ -791,7 +795,6 @@ public class TdOutputPlugin
             newSchema = Lists.newArrayList();
         }
 
-        // FIXME: Better variable name?
         final Map<String, TDColumnType> appliedColumnOptionSchema = applyColumnOptions(guessedSchema, task.getColumnOptions());
         for (Map.Entry<String, TDColumnType> pair : appliedColumnOptionSchema.entrySet()) {
             String key = renameColumn(pair.getKey());
