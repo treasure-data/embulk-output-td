@@ -1,3 +1,6 @@
+## 0.7.1 - 2021-02-01
+* [maintenance] Ignore appending 'v' column to table [#105](https://github.com/treasure-data/embulk-output-td/pull/105)
+
 ## 0.7.0 - 2020-09-15
 * [new feature] Added additional `column_options` configurations to customize TD's type [#98](https://github.com/treasure-data/embulk-output-td/pull/98)
 
