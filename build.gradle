@@ -28,7 +28,7 @@ tasks.withType(JavaCompile) {
 dependencies {
     compileOnly "org.embulk:embulk-core:0.9.23"
 
-    compile("com.treasuredata.client:td-client:0.8.4") {
+    compile("com.treasuredata.client:td-client:0.9.5") {
         // The "org.embulk.embulk-plugins" shows warnings about dependencies
         // because Jackson-related libraries and Guava are not excluded.
         //
