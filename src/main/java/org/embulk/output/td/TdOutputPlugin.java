@@ -777,8 +777,8 @@ public class TdOutputPlugin
         Map<String, Integer> usedNames = new HashMap<>();
         if (task.getMode() != Mode.REPLACE) {
             for (TDColumn existent : table.getColumns()) {
-                usedNames.put(new String(existent.getKey()), 1);
-                guessedSchema.remove(existent.getName()); // don't change type of existent columns
+                usedNames.put(existent.getName(), 1);
+                guessedSchema.remove(existent.getKeyString()); // don't change type of existent columns
             }
         }
         guessedSchema.remove("time"); // don't change type of 'time' column
@@ -808,7 +808,7 @@ public class TdOutputPlugin
                 usedNames.put(key, next + 1);
             }
 
-            newSchema.add(new TDColumn(pair.getKey(), pair.getValue(), key.getBytes(StandardCharsets.UTF_8)));
+            newSchema.add(new TDColumn(key, pair.getValue(), pair.getKey().getBytes(StandardCharsets.UTF_8)));
         }
 
         client.appendTableSchema(databaseName, task.getLoadTargetTableName(), newSchema);
