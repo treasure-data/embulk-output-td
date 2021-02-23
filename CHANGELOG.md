@@ -1,3 +1,6 @@
+## 0.7.2 - 2021-02-23
+* [maintenance] Fix the column order bug described in issue [#107](https://github.com/treasure-data/embulk-output-td/issues/107) [#108](https://github.com/treasure-data/embulk-output-td/pull/108)
+
 ## 0.7.1 - 2021-02-01
 * [maintenance] Ignore appending 'v' column to table [#105](https://github.com/treasure-data/embulk-output-td/pull/105)
 

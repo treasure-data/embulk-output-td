@@ -14,7 +14,7 @@ repositories {
 }
 
 group = "org.embulk.output.td"
-version = "0.7.1"
+version = "0.7.2"
 description = "TreasureData output plugin is an Embulk plugin that loads records to TreasureData read by any input plugins. Search the input plugins by 'embulk-output' keyword."
 
 sourceCompatibility = 1.8
