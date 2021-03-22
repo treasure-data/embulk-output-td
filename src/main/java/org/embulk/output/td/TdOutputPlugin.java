@@ -745,7 +745,7 @@ public class TdOutputPlugin
         inputSchema.visitColumns(new ColumnVisitor() {
             public void booleanColumn(Column column)
             {
-                guessedSchema.put(column.getName(), TDColumnType.LONG);
+                guessedSchema.put(column.getName(), TDColumnType.STRING);
             }
 
             public void longColumn(Column column)
