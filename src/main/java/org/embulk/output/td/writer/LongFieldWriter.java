@@ -42,7 +42,7 @@ public class LongFieldWriter
     @Override
     protected void writeTimestampValue(MsgpackGZFileBuilder builder, PageReader reader, Column column) throws IOException
     {
-        builder.writeLong(reader.getTimestamp(column).getEpochSecond());
+        builder.writeLong(getTimestamp(reader, column).getEpochSecond());
     }
 
     @Override

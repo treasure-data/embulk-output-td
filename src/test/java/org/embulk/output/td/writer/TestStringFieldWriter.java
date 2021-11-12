@@ -3,8 +3,7 @@ package org.embulk.output.td.writer;
 import org.embulk.output.td.MsgpackGZFileBuilder;
 import org.embulk.spi.Column;
 import org.embulk.spi.PageReader;
-import org.embulk.spi.time.Timestamp;
-import org.embulk.spi.time.TimestampFormatter;
+import org.embulk.util.timestamp.TimestampFormatter;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -12,6 +11,7 @@ import org.mockito.runners.MockitoJUnitRunner;
 import org.msgpack.value.impl.ImmutableStringValueImpl;
 
 import java.io.IOException;
+import java.time.Instant;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -76,8 +76,8 @@ public class TestStringFieldWriter
     @Test
     public void testWriteTimestampValue() throws IOException
     {
-        writer = new StringFieldWriter(KEY_NAME, TimestampFormatter.of("java:yyyy-MM-dd", "UTC"));
-        when(reader.getTimestamp(column)).thenReturn(Timestamp.ofEpochSecond(200));
+        writer = new StringFieldWriter(KEY_NAME, TimestampFormatter.builderWithJava("yyyy-MM-dd").build());
+        when(reader.getTimestampInstant(column)).thenReturn(Instant.ofEpochSecond(200));
         writer.writeTimestampValue(builder, reader, column);
         verify(builder).writeString("1970-01-01");
     }

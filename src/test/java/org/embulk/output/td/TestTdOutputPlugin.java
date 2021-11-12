@@ -1,7 +1,6 @@
 package org.embulk.output.td;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.treasuredata.client.ProxyConfig;
@@ -44,6 +43,7 @@ import org.slf4j.Logger;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
@@ -96,7 +96,7 @@ public class TestTdOutputPlugin
     public void checkDefaultValues()
     {
         ConfigSource config = this.config.deepCopy();
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final PluginTask task = TdOutputPlugin.CONFIG_MAPPER.map(config, PluginTask.class);
         assertEquals(true, task.getUseSsl());
         assertFalse(task.getHttpProxy().isPresent());
         assertEquals(TdOutputPlugin.Mode.APPEND, task.getMode());
@@ -125,7 +125,7 @@ public class TestTdOutputPlugin
                 .set("retry_limit", 17)
                 .set("retry_initial_interval_millis", 4822)
                 .set("retry_max_interval_millis", 19348);
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final PluginTask task = TdOutputPlugin.CONFIG_MAPPER.map(config, PluginTask.class);
         assertEquals(17, task.getRetryLimit());
         assertEquals(4822, task.getRetryInitialIntervalMillis());
         assertEquals(19348, task.getRetryMaxIntervalMillis());
@@ -174,7 +174,7 @@ public class TestTdOutputPlugin
     public void transaction()
     {
         doReturn("session_name").when(plugin).buildBulkImportSessionName(any(PluginTask.class));
-        ConfigDiff configDiff = Exec.newConfigDiff().set("last_session", "session_name");
+        ConfigDiff configDiff = TdOutputPlugin.CONFIG_MAPPER_FACTORY.newConfigDiff().set("last_session", "session_name");
         doReturn(configDiff).when(plugin).doRun(any(TDClient.class), any(Schema.class), any(PluginTask.class), any(OutputPlugin.Control.class));
         Schema schema = schema("time", Types.LONG, "c0", Types.STRING, "c1", Types.STRING);
 
@@ -186,7 +186,7 @@ public class TestTdOutputPlugin
                 @Override
                 public List<TaskReport> run(TaskSource taskSource)
                 {
-                    return Lists.newArrayList(Exec.newTaskReport());
+                    return Lists.newArrayList(TdOutputPlugin.CONFIG_MAPPER_FACTORY.newTaskReport());
                 }
             }).get(String.class, "last_session"));
         }
@@ -199,7 +199,7 @@ public class TestTdOutputPlugin
                 @Override
                 public List<TaskReport> run(TaskSource taskSource)
                 {
-                    return Lists.newArrayList(Exec.newTaskReport());
+                    return Lists.newArrayList(TdOutputPlugin.CONFIG_MAPPER_FACTORY.newTaskReport());
                 }
             }).get(String.class, "last_session"));
         }
@@ -222,7 +222,7 @@ public class TestTdOutputPlugin
             @Override
             public List<TaskReport> run(TaskSource taskSource)
             {
-                return Lists.newArrayList(Exec.newTaskReport());
+                return Lists.newArrayList(TdOutputPlugin.CONFIG_MAPPER_FACTORY.newTaskReport());
             }
         });
 
@@ -241,14 +241,14 @@ public class TestTdOutputPlugin
         doReturn(client).when(plugin).newTDClient(task);
         Schema schema = schema("time", Types.LONG, "c0", Types.STRING, "c1", Types.STRING);
 
-        plugin.cleanup(task.dump(), schema, 0, Lists.newArrayList(Exec.newTaskReport()));
+        plugin.cleanup(task.dump(), schema, 0, Lists.newArrayList(TdOutputPlugin.CONFIG_MAPPER_FACTORY.newTaskReport()));
         // no error happens
     }
 
     @Test
     public void checkColumnOptions()
     {
-        ColumnOption columnOption = config.loadConfig(ColumnOption.class);
+        final ColumnOption columnOption = TdOutputPlugin.CONFIG_MAPPER.map(config, ColumnOption.class);
         ImmutableMap<String, ColumnOption> columnOptions = ImmutableMap.of(
                 "c0", columnOption, "c1", columnOption
         );
@@ -442,10 +442,10 @@ public class TestTdOutputPlugin
     {
         // confirm if proxy system properties override proxy setting by http_proxy config option.
 
-        HttpProxyTask proxyTask = Exec.newConfigSource()
+        final HttpProxyTask proxyTask = TdOutputPlugin.CONFIG_MAPPER.map(TdOutputPlugin.CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("host", "option_host")
-                .set("port", 8080)
-                .loadConfig(HttpProxyTask.class);
+                .set("port", 8080),
+                HttpProxyTask.class);
 
         String originalProxyHost = System.getProperty("http.proxyHost");
         try {
@@ -472,7 +472,7 @@ public class TestTdOutputPlugin
 
         TDClient client = spy(plugin.newTDClient(task));
         doNothing().when(client).freezeBulkImportSession(anyString());
-        doNothing().when(client).performBulkImportSession(anyString(), any(Optional.class));
+        doNothing().when(client).performBulkImportSession(anyString(), any(com.google.common.base.Optional.class));
         doNothing().when(client).commitBulkImportSession(anyString());
 
         { // uploading + unfreeze
@@ -592,7 +592,8 @@ public class TestTdOutputPlugin
     }
 
     @Test
-    public void testUpdateSchemaWillApplyColumnOption() {
+    public void testUpdateSchemaWillApplyColumnOption()
+    {
         final String dbName = "test_db";
         final String tblName = "test_tbl";
         PluginTask task = mock(PluginTask.class);
@@ -610,8 +611,8 @@ public class TestTdOutputPlugin
         doNothing().when(client).appendTableSchema(anyString(), anyString(), schemaCaptor.capture());
 
         ImmutableMap<String, ColumnOption> columnOptions = ImmutableMap.of(
-                "col2", Exec.newConfigSource().set("type", "array<string>").set("value_type", "array").loadConfig(ColumnOption.class),
-                "col3", Exec.newConfigSource().set("type", "string").set("value_type", "map").loadConfig(ColumnOption.class)
+                "col2", TdOutputPlugin.CONFIG_MAPPER.map(TdOutputPlugin.CONFIG_MAPPER_FACTORY.newConfigSource().set("type", "array<string>").set("value_type", "array"), ColumnOption.class),
+                "col3", TdOutputPlugin.CONFIG_MAPPER.map(TdOutputPlugin.CONFIG_MAPPER_FACTORY.newConfigSource().set("type", "string").set("value_type", "map"), ColumnOption.class)
         );
         doReturn(columnOptions).when(task).getColumnOptions();
 
@@ -633,12 +634,12 @@ public class TestTdOutputPlugin
                                                 header1.getName(), header1.getValue(),
                                                 header2.getName(), header2.getValue());
 
-        PluginTask task = config()
+        PluginTask task = TdOutputPlugin.CONFIG_MAPPER.map(config()
                 .set("endpoint", "localhost")
                 .set("port", wireMockPort)
                 .set("use_ssl", "false") // ssl disabled for wiremock
-                .set("additional_http_headers", headers)
-                .loadConfig(PluginTask.class);
+                .set("additional_http_headers", headers),
+                PluginTask.class);
 
         stubFor(get(urlMatching(urlRegx))
                 .willReturn(aResponse()
@@ -670,7 +671,7 @@ public class TestTdOutputPlugin
 
     public static ConfigSource config()
     {
-        return Exec.newConfigSource()
+        return TdOutputPlugin.CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("apikey", "xxx")
                 .set("endpoint", "api.treasuredata.com")
                 .set("database", "my_db")
@@ -690,7 +691,7 @@ public class TestTdOutputPlugin
 
     public static PluginTask pluginTask(ConfigSource config)
     {
-        return config.loadConfig(PluginTask.class);
+        return TdOutputPlugin.CONFIG_MAPPER.map(config, PluginTask.class);
     }
 
     public static TdOutputPlugin plugin()
@@ -708,9 +709,9 @@ public class TestTdOutputPlugin
         return new TDTable("", name, TDTableType.LOG, schema, 0, 0, "", "", "", "");
     }
 
-    public static FieldWriterSet fieldWriters(Logger log, PluginTask task, Schema schema)
+    public static FieldWriterSet fieldWriters(PluginTask task, Schema schema)
     {
-        return spy(FieldWriterSet.createWithValidation(log, task, schema, false));
+        return spy(FieldWriterSet.createWithValidation(task, schema, false));
     }
 
     public static RecordWriter recordWriter(PluginTask task, TDClient client, FieldWriterSet fieldWriters)

@@ -1,21 +1,20 @@
 plugins {
-    id "com.jfrog.bintray" version "1.8.4"
     id "java"
-    id "maven" // install jar files to the local repo: $ gradle install
     id "maven-publish"
-    id "org.embulk.embulk-plugins" version "0.3.0"
+    id "signing"
+    id "org.embulk.embulk-plugins" version "0.4.2"
+    id "checkstyle"
+    id "pmd"
+    id "jacoco"
 }
-
-apply from: 'gradle/check.gradle'
 
 repositories {
     mavenCentral()
-    jcenter()
 }
 
-group = "org.embulk.output.td"
-version = "0.7.2"
-description = "TreasureData output plugin is an Embulk plugin that loads records to TreasureData read by any input plugins. Search the input plugins by 'embulk-output' keyword."
+group = "com.treasuredata.embulk.plugins"
+version = "0.8.0-SNAPSHOT"
+description = "TreasureData output plugin is an Embulk plugin that loads records to Treasure Data read by any input plugins."
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
@@ -25,32 +24,78 @@ tasks.withType(JavaCompile) {
     options.compilerArgs << "-Xlint:deprecation" << "-Xlint:unchecked"
 }
 
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
 dependencies {
-    compileOnly "org.embulk:embulk-core:0.9.23"
+    compileOnly "org.embulk:embulk-api:0.10.34"
+    compileOnly "org.embulk:embulk-spi:0.10.34"
 
     compile("com.treasuredata.client:td-client:0.9.5") {
-        // The "org.embulk.embulk-plugins" shows warnings about dependencies
-        // because Jackson-related libraries and Guava are not excluded.
+        // td-client:0.9.5 transitively depends on Jackson 2.9.10 and Guava 24.1.1.
         //
-        // It is known, and accepted now, because embulk-output-td-0.5.3.gem
-        // included them while they conflict with embulk-core's dependencies.
+        // They could conflict with Jackson 2.6.7 and Guava 18.0 in embulk-core.
+        // It has been a known potential problem. It has been working so far, fortunately.
         //
-        // TODO: Resolve this.
+        // The conflict has been accepted now proved by time. This plugin will be able to start using "compliant" Jackson and Guava
+        // once Embulk removes Jackson (in v0.10.32) and Guava (planned for in v0.10.35+) from embulk-core.
 
+        // Jackson 2.6.7 is included in embulk-core's dependencies before Embulk v0.10.32.
+        // They are once excluded here, and added independently with explicit versions specified.
+        exclude group: "com.fasterxml.jackson.core", module: "jackson-annotations"
+        exclude group: "com.fasterxml.jackson.core", module: "jackson-core"
+        exclude group: "com.fasterxml.jackson.core", module: "jackson-databind"
+
+        // Guice 4.0 is included in embulk-core's dependencies before Embulk v0.10.33.
+        // They are once excluded here, and added independently with explicit versions specified.
         exclude group: "com.google.inject", module: "guice"
         exclude group: "com.google.inject.extensions", module: "guice-multibindings"
-        exclude group: "org.slf4j", module: "slf4j-api"
         exclude group: "aopalliance", module: "aopalliance"
         exclude group: "javax.inject", module: "javax.inject"
+
+        // slf4j-api is included in embulk-api's dependencies.
+        exclude group: "org.slf4j", module: "slf4j-api"
     }
 
-    testCompile "junit:junit:4.13"
+    compile("org.embulk:embulk-util-config:0.3.1") {
+        // They conflict with embulk-core.
+        // They are once excluded here, and added independently with explicit versions specified.
+        exclude group: "com.fasterxml.jackson.core", module: "jackson-annotations"
+        exclude group: "com.fasterxml.jackson.core", module: "jackson-core"
+        exclude group: "com.fasterxml.jackson.core", module: "jackson-databind"
+        exclude group: "com.fasterxml.jackson.datatype", module: "jackson-datatype-jdk8"
+        exclude group: "javax.validation", module: "validation-api"
+    }
+
+    // Guice is in embulk-core's dependencies before Embulk v0.10.33, and to be removed.
+    // They, whose versions are the 100% same with embulk-core's, are explicitly included here to work even before/after v0.10.33.
+    compile "com.google.inject.extensions:guice-multibindings:4.0"  // td-client:0.9.5's dependency is 3.0, but embulk-core on 4.0.
+    compile "com.google.inject:guice:4.0"
+    compile "aopalliance:aopalliance:1.0"
+    compile "javax.inject:javax.inject:1"
+
+    // Jackson is in embulk-core's dependencies before Embulk v0.10.32, and to be removed.
+    // are once excluded from transitive dependencies of other dependencies,
+    // and added explicitly with versions that were used in embulk-output-td:0.7.2.
+    compile "com.fasterxml.jackson.core:jackson-annotations:2.9.10"
+    compile "com.fasterxml.jackson.core:jackson-core:2.9.10"
+    compile "com.fasterxml.jackson.core:jackson-databind:2.9.10.5"
+    compile "com.fasterxml.jackson.datatype:jackson-datatype-guava:2.9.10"
+    compile "com.fasterxml.jackson.datatype:jackson-datatype-json-org:2.9.10"
+    compile "javax.validation:validation-api:1.1.0.Final"
+
+    compile "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.9.10"
+
+    compile "org.embulk:embulk-util-timestamp:0.2.1"
+
+    testCompile "junit:junit:4.13.2"
     testCompile "org.bigtesting:fixd:1.0.0"
-    testCompile "org.embulk:embulk-core:0.9.23:tests"
-    testCompile "org.embulk:embulk-standards:0.9.23"
-    testCompile "org.embulk:embulk-deps-buffer:0.9.23"
-    testCompile "org.embulk:embulk-deps-config:0.9.23"
-    testCompile  "org.mockito:mockito-core:1.9.5"
+    testCompile "org.embulk:embulk-core:0.10.34"
+    testCompile "org.embulk:embulk-deps:0.10.34"
+    testCompile "org.embulk:embulk-junit4:0.10.34"
+    testCompile "org.mockito:mockito-core:1.9.5"
     testCompile "com.github.tomakehurst:wiremock-jre8:2.25.1"
 }
 
@@ -67,56 +112,86 @@ javadoc {
     }
 }
 
-// add tests/javadoc/source jar tasks as artifacts to be released
-task testsJar(type: Jar, dependsOn: classes) {
-    classifier = "tests"
-    from sourceSets.test.output
-}
-task sourcesJar(type: Jar, dependsOn: classes) {
-    classifier = "sources"
-    from sourceSets.main.allSource
-}
-task javadocJar(type: Jar, dependsOn: javadoc) {
-    classifier = "javadoc"
-    from javadoc.destinationDir
-}
-
-// bintray and publishing
-bintray {
-    // write at your bintray user name and api key to ~/.gradle/gradle.properties file:
-    user = project.hasProperty('bintray_user') ? bintray_user : ''
-    key = project.hasProperty('bintray_api_key') ? bintray_api_key : ''
-
-    publications = [ "embulkMavenRelease" ]
-    publish = true
-
-    pkg {
-        userOrg = 'embulk-output-td'
-        repo = 'maven'
-        name = project.name
-        desc = 'Embulk output plugin for Treasure Data'
-        websiteUrl = 'https://github.com/treasure-data/embulk-output-td'
-        issueTrackerUrl = 'https://github.com/treasure-data/embulk-output-td/issues'
-        vcsUrl = 'https://github.com/treasure-data/embulk-output-td.git'
-        licenses = ['Apache-2.0']
-        labels = ['embulk', 'java']
-        publicDownloadNumbers = true
-
-        version {
-            name = project.version
-        }
-    }
-}
-
 publishing {
     publications {
-        embulkMavenRelease(MavenPublication) {
-            from components.java
-            artifact testsJar
-            artifact sourcesJar
-            artifact javadocJar
+        maven(MavenPublication) {
+            groupId = project.group
+            artifactId = project.name
+
+            from components.java  // Must be "components.java". The dependency modification works only for it.
+            // javadocJar and sourcesJar are added by java.withJavadocJar() and java.withSourcesJar() above.
+            // See: https://docs.gradle.org/current/javadoc/org/gradle/api/plugins/JavaPluginExtension.html
+
+            pom {  // https://central.sonatype.org/pages/requirements.html
+                packaging "jar"
+
+                name = project.name
+                description = project.description
+                url = "https://github.com/treasure-data/embulk-output-td"
+
+                licenses {
+                    license {
+                        // http://central.sonatype.org/pages/requirements.html#license-information
+                        name = "The Apache License, Version 2.0"
+                        url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+                    }
+                }
+
+                developers {
+                    developer {
+                        name = "Satoshi Akama"
+                        email = "satoshiakama@gmail.com"
+                    }
+                    developer {
+                        name = "Tai Khuu"
+                        email = "khuutantai@gmail.com"
+                    }
+                    developer {
+                        name = "Trung Huynh"
+                        email = "httrung90@gmail.com"
+                    }
+                    developer {
+                        name = "Dai MIKURUBE"
+                        email = "dmikurube@treasure-data.com"
+                    }
+                    developer {
+                        name = "Viet Nguyen"
+                        email = "viet.nguyen@treasure-data.com"
+                    }
+                    developer {
+                        name = "John Luong"
+                        email = "jluong@treasure-data.com"
+                    }
+                }
+
+                scm {
+                    connection = "scm:git:git://github.com/treasure-data/embulk-output-td.git"
+                    developerConnection = "scm:git:git@github.com:treasure-data/embulk-output-td.git"
+                    url = "https://github.com/treasure-data/embulk-output-td"
+                }
+            }
         }
     }
+
+    repositories {
+        maven {  // publishMavenPublicationToMavenCentralRepository
+            name = "mavenCentral"
+            if (project.version.endsWith("-SNAPSHOT")) {
+                url "https://oss.sonatype.org/content/repositories/snapshots"
+            } else {
+                url "https://oss.sonatype.org/service/local/staging/deploy/maven2"
+            }
+
+            credentials {
+                username = project.hasProperty("ossrhUsername") ? ossrhUsername : ""
+                password = project.hasProperty("ossrhPassword") ? ossrhPassword : ""
+            }
+        }
+    }
+}
+
+signing {
+    sign publishing.publications.maven
 }
 
 gem {
@@ -124,10 +199,46 @@ gem {
     email = [ "muga.nishizawa@gmail.com" ]
     summary = "TreasureData output plugin for Embulk"
     homepage = "https://github.com/treasure-data/embulk-output-td"
-    licenses = [ "Apache 2.0" ]
+    licenses = [ "Apache-2.0" ]
 }
 
 gemPush {
     host = "https://rubygems.org"
     outputs.upToDateWhen { false }
+}
+
+test {
+    testLogging {
+        events "passed", "skipped", "failed", "standardOut", "standardError"
+
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showCauses = true
+        showExceptions = true
+        showStackTraces = true
+        showStandardStreams = true
+
+        outputs.upToDateWhen { false }
+    }
+}
+
+// Checkstyle
+checkstyle {
+    ignoreFailures = true
+    // @see https://github.com/facebook/presto/blob/master/src/checkstyle/checks.xml
+    //configFile = rootProject.file('./checkstyle.xml') // default {project.projectDir}/config/checkstyle/checkstyle.xml
+}
+
+// PMD
+tasks.withType(Pmd) {
+    ignoreFailures = true
+    reports.html.enabled true
+}
+
+// JaCoCo
+jacocoTestReport { // will use td-client v0.6.x
+    afterEvaluate {
+        classDirectories.from = files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: 'com/treasuredata/api/**')
+        })
+    }
 }

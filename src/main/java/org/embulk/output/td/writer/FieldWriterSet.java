@@ -1,10 +1,10 @@
 package org.embulk.output.td.writer;
 
 import java.io.IOException;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Optional;
+import java.util.Optional;
+import java.util.Map;
 import org.embulk.config.ConfigException;
+import org.embulk.config.ConfigSource;
 import org.embulk.output.td.TdOutputPlugin;
 import org.embulk.output.td.TdOutputPlugin.ConvertTimestampType;
 import org.embulk.output.td.TimeValueConfig;
@@ -12,10 +12,8 @@ import org.embulk.output.td.TimeValueGenerator;
 import org.embulk.spi.Column;
 import org.embulk.spi.ColumnVisitor;
 import org.embulk.spi.DataException;
-import org.embulk.spi.Exec;
 import org.embulk.spi.PageReader;
 import org.embulk.spi.Schema;
-import org.embulk.spi.time.TimestampFormatter;
 import org.embulk.spi.type.BooleanType;
 import org.embulk.spi.type.DoubleType;
 import org.embulk.spi.type.JsonType;
@@ -24,9 +22,10 @@ import org.embulk.spi.type.StringType;
 import org.embulk.spi.type.TimestampType;
 import org.embulk.spi.type.Type;
 import org.embulk.spi.type.Types;
-import org.embulk.spi.util.Timestamps;
 import org.embulk.output.td.MsgpackGZFileBuilder;
+import org.embulk.util.timestamp.TimestampFormatter;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FieldWriterSet
 {
@@ -37,6 +36,8 @@ public class FieldWriterSet
         ADVANCED_VALUE,
         DUPLICATE_PRIMARY_KEY;
     }
+
+    private static final Logger log = LoggerFactory.getLogger(FieldWriterSet.class);
 
     private final int fieldCount;
     private final IFieldWriter[] fieldWriters;
@@ -49,13 +50,13 @@ public class FieldWriterSet
         this.staticTimeValue = staticTimeValue;
     }
 
-    public static FieldWriterSet createWithValidation(Logger log, TdOutputPlugin.PluginTask task, Schema schema, boolean runStage)
+    public static FieldWriterSet createWithValidation(final TdOutputPlugin.PluginTask task, final Schema schema, final boolean runStage)
     {
         boolean isIgnoreAlternativeTime = task.getIgnoreAlternativeTimeIfTimeExists()
                 && schema.getColumns().stream().anyMatch(column -> "time".equals(column.getName()));
-        Optional<String> userDefinedPrimaryKeySourceColumnName = isIgnoreAlternativeTime ? Optional.absent() : task.getTimeColumn();
+        final Optional<String> userDefinedPrimaryKeySourceColumnName = isIgnoreAlternativeTime ? Optional.empty() : task.getTimeColumn();
         ConvertTimestampType convertTimestampType = task.getConvertTimestampType();
-        Optional<TimeValueConfig> timeValueConfig = isIgnoreAlternativeTime ? Optional.absent() : task.getTimeValue();
+        final Optional<TimeValueConfig> timeValueConfig = isIgnoreAlternativeTime ? Optional.empty() : task.getTimeValue();
 
         if (timeValueConfig.isPresent() && userDefinedPrimaryKeySourceColumnName.isPresent()) {
             throw new ConfigException("Setting both time_column and time_value is invalid");
@@ -66,7 +67,7 @@ public class FieldWriterSet
 
         int fc = 0;
         IFieldWriter[] createdFieldWriters = new IFieldWriter[schema.size()];
-        TimestampFormatter[] timestampFormatters = Timestamps.newTimestampColumnFormatters(task, schema, task.getColumnOptions());
+        final TimestampFormatter[] timestampFormatters = newTimestampColumnFormatters(task, schema, task.getColumnOptions());
 
         for (int i = 0; i < schema.size(); i++) {
             String columnName = schema.getColumnName(i);
@@ -164,7 +165,7 @@ public class FieldWriterSet
 
         if (foundPrimaryKey) {
             // appropriate 'time' column is found
-            return new FieldWriterSet(fc, createdFieldWriters, Optional.<TimeValueGenerator>absent());
+            return new FieldWriterSet(fc, createdFieldWriters, Optional.<TimeValueGenerator>empty());
         }
 
         if (timeValueConfig.isPresent()) {
@@ -202,7 +203,7 @@ public class FieldWriterSet
 
             // replace existint writer
             createdFieldWriters[duplicatePrimaryKeySourceIndex] = writer;
-            return new FieldWriterSet(fc + 1, createdFieldWriters, Optional.<TimeValueGenerator>absent());
+            return new FieldWriterSet(fc + 1, createdFieldWriters, Optional.<TimeValueGenerator>empty());
         }
 
         if (!foundPrimaryKey) {
@@ -216,7 +217,10 @@ public class FieldWriterSet
             if (!runStage) {
                 log.info("'time' column is generated and is set to a unix time {}", uploadTime);
             }
-            TimeValueConfig newConfig = Exec.newConfigSource().set("mode", "fixed_time").set("value", uploadTime).loadConfig(TimeValueConfig.class);
+            final ConfigSource newConfigSource =
+                    TdOutputPlugin.CONFIG_MAPPER_FACTORY.newConfigSource().set("mode", "fixed_time").set("value", uploadTime);
+            final TimeValueConfig newConfig =
+                    TdOutputPlugin.CONFIG_MAPPER.map(newConfigSource, TimeValueConfig.class);
             task.setTimeValue(Optional.of(newConfig));
             return new FieldWriterSet(fc + 1, createdFieldWriters, Optional.of(TimeValueGenerator.newGenerator(newConfig)));
         }
@@ -307,7 +311,6 @@ public class FieldWriterSet
         }
     }
 
-    @VisibleForTesting
     public IFieldWriter getFieldWriter(int index)
     {
         return fieldWriters[index];
@@ -383,5 +386,36 @@ public class FieldWriterSet
         catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static TimestampFormatter[] newTimestampColumnFormatters(
+            final TdOutputPlugin.PluginTask task, final Schema schema, final Map<String, TdOutputPlugin.ColumnOption> columnOptions)
+    {
+        final TimestampFormatter[] formatters = new TimestampFormatter[schema.getColumnCount()];
+        int i = 0;
+        for (final Column column : schema.getColumns()) {
+            if (column.getType() instanceof TimestampType) {
+                final Optional<TdOutputPlugin.ColumnOption> columnOption = Optional.ofNullable(columnOptions.get(column.getName()));
+
+                final String pattern;
+                if (columnOption.isPresent()) {
+                    pattern = columnOption.get().getFormat().orElse(task.getDefaultTimestampFormat());
+                }
+                else {
+                    pattern = task.getDefaultTimestampFormat();
+                }
+
+                final String zoneIdString;
+                if (columnOption.isPresent()) {
+                    zoneIdString = columnOption.get().getTimeZoneId().orElse(task.getDefaultTimeZoneId());
+                }
+                else {
+                    zoneIdString = task.getDefaultTimeZoneId();
+                }
+                formatters[i] = TimestampFormatter.builder(pattern, true).setDefaultZoneFromString(zoneIdString).build();
+            }
+            i++;
+        }
+        return formatters;
     }
 }

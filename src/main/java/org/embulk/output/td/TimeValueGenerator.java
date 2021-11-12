@@ -1,6 +1,6 @@
 package org.embulk.output.td;
 
-import com.google.common.base.Optional;
+import java.util.Optional;
 import org.embulk.config.ConfigException;
 
 public abstract class TimeValueGenerator

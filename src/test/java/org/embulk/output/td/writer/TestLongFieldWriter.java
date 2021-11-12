@@ -4,13 +4,13 @@ import org.embulk.output.td.MsgpackGZFileBuilder;
 import org.embulk.spi.Column;
 import org.embulk.spi.DataException;
 import org.embulk.spi.PageReader;
-import org.embulk.spi.time.Timestamp;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
 import java.io.IOException;
+import java.time.Instant;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -75,7 +75,7 @@ public class TestLongFieldWriter
     @Test
     public void testWriteTimestampValue() throws IOException
     {
-        when(reader.getTimestamp(column)).thenReturn(Timestamp.ofEpochSecond(200));
+        when(reader.getTimestampInstant(column)).thenReturn(Instant.ofEpochSecond(200));
         writer.writeTimestampValue(builder, reader, column);
         verify(builder).writeLong(200);
     }
