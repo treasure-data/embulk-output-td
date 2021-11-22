@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
-import com.google.common.base.Optional;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -19,13 +18,9 @@ import com.treasuredata.client.model.TDBulkImportSession.ImportStatus;
 import com.treasuredata.client.model.TDColumn;
 import com.treasuredata.client.model.TDColumnType;
 import com.treasuredata.client.model.TDTable;
-import org.embulk.EmbulkVersion;
-import org.embulk.config.Config;
-import org.embulk.config.ConfigDefault;
 import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
-import org.embulk.config.Task;
 import org.embulk.config.TaskReport;
 import org.embulk.config.TaskSource;
 import org.embulk.output.td.writer.FieldWriterSet;
@@ -36,8 +31,12 @@ import org.embulk.spi.Exec;
 import org.embulk.spi.OutputPlugin;
 import org.embulk.spi.Schema;
 import org.embulk.spi.TransactionalPageOutput;
-import org.embulk.spi.time.Timestamp;
-import org.embulk.spi.time.TimestampFormatter;
+import org.embulk.util.config.Config;
+import org.embulk.util.config.ConfigDefault;
+import org.embulk.util.config.ConfigMapper;
+import org.embulk.util.config.ConfigMapperFactory;
+import org.embulk.util.config.Task;
+import org.embulk.util.config.TaskMapper;
 import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessageUnpacker;
 import org.msgpack.value.Value;
@@ -50,6 +49,7 @@ import javax.validation.constraints.Min;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -57,19 +57,19 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
-import static com.google.common.base.Optional.fromNullable;
 import static java.lang.Integer.parseInt;
 
 public class TdOutputPlugin
         implements OutputPlugin
 {
     public interface PluginTask
-            extends Task, TimestampFormatter.Task
+            extends Task
     {
         @Config("apikey")
         String getApiKey();
@@ -145,7 +145,12 @@ public class TdOutputPlugin
         @ConfigDefault("16384") // default 16MB (unit: kb)
         long getFileSplitSize();
 
-        @Override
+        // From org.embulk.spi.time.TimestampFormatter.Task.
+        @Config("default_timezone")
+        @ConfigDefault("\"UTC\"")
+        String getDefaultTimeZoneId();
+
+        // From org.embulk.spi.time.TimestampFormatter.Task, but modified to have a different @ConfigDefault.
         @Config("default_timestamp_format")
         // SQL timestamp with milliseconds is, by defualt, used because Hive and Presto use
         // those format. As timestamp type, Presto
@@ -207,8 +212,30 @@ public class TdOutputPlugin
     }
 
     public interface ColumnOption
-            extends Task, TimestampFormatter.TimestampColumnOption, TypeColumnOption
-    {}
+            extends Task
+    {
+        // From org.embulk.spi.time.TimestampFormatter.TimestampColumnOption.
+        @Config("timezone")
+        @ConfigDefault("null")
+        Optional<String> getTimeZoneId();
+
+        // From org.embulk.spi.time.TimestampFormatter.TimestampColumnOption.
+        @Config("format")
+        @ConfigDefault("null")
+        Optional<String> getFormat();
+
+        // It was in an internal interface TdOutputPlugin.TypeColumnOption, but merged directly in TdOutputPlugin.ColumnOption.
+        // keep backward compatible
+        @Config("type")
+        @ConfigDefault("null")
+        Optional<String> getType();
+
+        // It was in an internal interface TdOutputPlugin.TypeColumnOption, but merged directly in TdOutputPlugin.ColumnOption.
+        // keep backward compatible
+        @Config("value_type")
+        @ConfigDefault("null")
+        Optional<String> getValueType();
+    }
 
     public enum Mode
     {
@@ -266,21 +293,6 @@ public class TdOutputPlugin
         @ConfigDefault("null")
         Optional<String> getPassword();
     }
-
-    // FIXME: Better class naming?
-    public interface TypeColumnOption
-    {
-        // keep backward compatible
-        @Config("type")
-        @ConfigDefault("null")
-        Optional<String> getType();
-
-        // keep backward compatible
-        @Config("value_type")
-        @ConfigDefault("null")
-        Optional<String> getValueType();
-    }
-
 
     public static enum ConvertTimestampType
     {
@@ -370,17 +382,12 @@ public class TdOutputPlugin
 
     static final String TASK_REPORT_UPLOADED_PART_NUMBER = "uploaded_part_number";
 
-    private final Logger log;
-
-    public TdOutputPlugin()
-    {
-        this.log = LoggerFactory.getLogger(getClass());
-    }
+    private static final Logger log = LoggerFactory.getLogger(TdOutputPlugin.class);
 
     public ConfigDiff transaction(final ConfigSource config, final Schema schema, int processorCount,
                                   OutputPlugin.Control control)
     {
-        final PluginTask task = config.loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER.map(config, PluginTask.class);
 
         // check column_options is valid or not
         checkColumnOptions(schema, task.getColumnOptions());
@@ -391,8 +398,6 @@ public class TdOutputPlugin
         if (!task.getTempDir().isPresent()) {
             task.setTempDir(Optional.of(getEnvironmentTempDirectory()));
         }
-
-        checkEmbulkVersion();
 
         try (TDClient client = newTDClient(task)) {
             String databaseName = task.getDatabase();
@@ -420,7 +425,7 @@ public class TdOutputPlugin
             }
 
             // validate FieldWriterSet configuration before transaction is started
-            validateFieldWriterSet(log, task, schema);
+            validateFieldWriterSet(task, schema);
 
             return doRun(client, schema, task, control);
         }
@@ -430,7 +435,7 @@ public class TdOutputPlugin
             Schema schema, int processorCount,
             OutputPlugin.Control control)
     {
-        PluginTask task = taskSource.loadTask(PluginTask.class);
+        final PluginTask task = TASK_MAPPER.map(taskSource, PluginTask.class);
         try (TDClient client = newTDClient(task)) {
             return doRun(client, schema, task, control);
         }
@@ -441,7 +446,7 @@ public class TdOutputPlugin
     {
         boolean doUpload = startBulkImportSession(client, task.getSessionName(), task.getDatabase(), task.getLoadTargetTableName());
         task.setDoUpload(doUpload);
-        List<TaskReport> taskReports = control.run(task.dump());
+        final List<TaskReport> taskReports = control.run(task.toTaskSource());
         if (!isNoUploadedParts(taskReports)) {
             completeBulkImportSession(client, schema, task, 0);  // TODO perform job priority
         }
@@ -463,7 +468,7 @@ public class TdOutputPlugin
             renameTable(client, task.getDatabase(), task.getLoadTargetTableName(), task.getTable());
         }
 
-        ConfigDiff configDiff = Exec.newConfigDiff();
+        final ConfigDiff configDiff = CONFIG_MAPPER_FACTORY.newConfigDiff();
         configDiff.set("last_session", task.getSessionName());
         return configDiff;
     }
@@ -472,7 +477,7 @@ public class TdOutputPlugin
             Schema schema, int processorCount,
             List<TaskReport> successTaskReports)
     {
-        PluginTask task = taskSource.loadTask(PluginTask.class);
+        final PluginTask task = TASK_MAPPER.map(taskSource, PluginTask.class);
         try (TDClient client = newTDClient(task)) {
             String sessionName = task.getSessionName();
             log.info("Deleting bulk import session '{}'", sessionName);
@@ -544,17 +549,21 @@ public class TdOutputPlugin
             String proto = !useSsl ? "http" : "https";
             String host = props.getProperty(proto + ".proxyHost");
             int port = parseInt(props.getProperty(proto + ".proxyPort", !useSsl ? "80" : "443"));
-            Optional<String> user = fromNullable(props.getProperty(proto + ".proxyUser"));
-            Optional<String> password = fromNullable(props.getProperty(proto + ".proxyPassword"));
+            final com.google.common.base.Optional<String> user =
+                    com.google.common.base.Optional.fromNullable(props.getProperty(proto + ".proxyUser"));
+            final com.google.common.base.Optional<String> password =
+                    com.google.common.base.Optional.fromNullable(props.getProperty(proto + ".proxyPassword"));
             return Optional.of(new ProxyConfig(host, port, useSsl, user, password));
         }
         else if (task.isPresent()) {
             HttpProxyTask proxyTask = task.get();
             return Optional.of(new ProxyConfig(proxyTask.getHost(), proxyTask.getPort(), proxyTask.getUseSsl(),
-                    proxyTask.getUser(), proxyTask.getPassword()));
+                    com.google.common.base.Optional.fromNullable(proxyTask.getUser().orElse(null)),
+                    com.google.common.base.Optional.fromNullable(proxyTask.getPassword().orElse(null))));
+
         }
         else {
-            return Optional.absent();
+            return Optional.empty();
         }
     }
 
@@ -624,12 +633,12 @@ public class TdOutputPlugin
             return task.getSession().get();
         }
         else {
-            Timestamp time = Exec.getTransactionTime(); // TODO implement Exec.getTransactionUniqueName()
+            final Instant transactionTime = getTransactionTime();
             final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
                     .withZone(ZoneOffset.UTC);
             return String.format("embulk_%s_%09d_%s",
-                    dateTimeFormatter.format(time.getInstant()),
-                    time.getNano(), UUID.randomUUID().toString().replace('-', '_'));
+                    dateTimeFormatter.format(transactionTime),
+                    transactionTime.getNano(), UUID.randomUUID().toString().replace('-', '_'));
         }
     }
 
@@ -687,7 +696,9 @@ public class TdOutputPlugin
                 }
             }
             // perform
-            client.performBulkImportSession(sessionName, task.getPoolName()); // TODO use priority
+            client.performBulkImportSession(
+                    sessionName,
+                    com.google.common.base.Optional.fromNullable(task.getPoolName().orElse(null)));  // TODO use priority
 
             // pass
         case PERFORMING:
@@ -835,6 +846,10 @@ public class TdOutputPlugin
         }
     }
 
+    public static final ConfigMapperFactory CONFIG_MAPPER_FACTORY = ConfigMapperFactory.builder().addDefaultModules().build();
+    public static final ConfigMapper CONFIG_MAPPER = CONFIG_MAPPER_FACTORY.createConfigMapper();
+    static final TaskMapper TASK_MAPPER = CONFIG_MAPPER_FACTORY.createTaskMapper();
+
     private static final Pattern COLUMN_NAME_PATTERN = Pattern.compile("\\A[a-z_][a-z0-9_]*\\z");
     private static final Pattern COLUMN_NAME_SQUASH_PATTERN = Pattern.compile("(?:[^a-zA-Z0-9_]|(?:\\A[^a-zA-Z_]))+");
 
@@ -872,32 +887,6 @@ public class TdOutputPlugin
                 return null;
             }
         });
-    }
-
-    private void checkEmbulkVersion()
-    {
-        // Embulk v0.8.21 and lower version uses old Jackson and doesn't works with this plugin
-        // https://github.com/embulk/embulk/pull/615
-        boolean isValidVersion = true;
-        try {
-            // Embulk v0.8.18 or lower version doesn't have class org.embulk.EmbulkVersion
-            Class.forName("org.embulk.EmbulkVersion");
-            String[] versionNumber = EmbulkVersion.VERSION.split("-"); // to split e.g. "0.8.26-SNAPSHOT" or "0.8.30-ALPHA1"
-            if (versionNumber[0] != null) {
-                String[] versions = versionNumber[0].split("\\.");
-                if (versions.length == 3) {
-                    if (Integer.valueOf(versions[1]) <= 8 && Integer.valueOf(versions[2]) < 22) {
-                        isValidVersion = false;
-                    }
-                }
-            }
-        }
-        catch (ClassNotFoundException ex) {
-            isValidVersion = false;
-        }
-        if (!isValidVersion) {
-            throw new ConfigException("embulk-output-td v0.4.x+ only supports Embulk v0.8.22 or higher versions");
-        }
     }
 
     private Map<String, TDColumnType> applyColumnOptions(Map<String, TDColumnType> schema, Map<String, ColumnOption> columnOptions)
@@ -965,11 +954,11 @@ public class TdOutputPlugin
     @Override
     public TransactionalPageOutput open(TaskSource taskSource, Schema schema, int taskIndex)
     {
-        final PluginTask task = taskSource.loadTask(PluginTask.class);
+        final PluginTask task = TASK_MAPPER.map(taskSource, PluginTask.class);
 
         RecordWriter closeLater = null;
         try {
-            FieldWriterSet fieldWriters = createFieldWriterSet(log, task, schema);
+            final FieldWriterSet fieldWriters = createFieldWriterSet(task, schema);
             closeLater = new RecordWriter(task, taskIndex, newTDClient(task), fieldWriters);
             RecordWriter recordWriter = closeLater;
             recordWriter.open(schema);
@@ -993,13 +982,35 @@ public class TdOutputPlugin
         return System.getProperty("java.io.tmpdir");
     }
 
-    protected FieldWriterSet createFieldWriterSet(Logger log, PluginTask task, Schema schema)
+    protected FieldWriterSet createFieldWriterSet(PluginTask task, Schema schema)
     {
-        return FieldWriterSet.createWithValidation(log, task, schema, true);
+        return FieldWriterSet.createWithValidation(task, schema, true);
     }
 
-    protected void validateFieldWriterSet(Logger log, PluginTask task, Schema schema)
+    protected void validateFieldWriterSet(PluginTask task, Schema schema)
     {
-        FieldWriterSet.createWithValidation(log, task, schema, false);
+        FieldWriterSet.createWithValidation(task, schema, false);
     }
+
+    @SuppressWarnings("deprecation")
+    private static Instant getTransactionTime()
+    {
+        if (HAS_EXEC_GET_TRANSACTION_TIME_INSTANT) {
+            return Exec.getTransactionTimeInstant();
+        }
+        return Exec.getTransactionTime().getInstant();
+    }
+
+    private static boolean hasExecGetTransactionTimeInstant()
+    {
+        try {
+            Exec.class.getMethod("getTransactionTimeInstant");
+        }
+        catch (final NoSuchMethodException ex) {
+            return false;
+        }
+        return true;
+    }
+
+    private static final boolean HAS_EXEC_GET_TRANSACTION_TIME_INSTANT = hasExecGetTransactionTimeInstant();
 }

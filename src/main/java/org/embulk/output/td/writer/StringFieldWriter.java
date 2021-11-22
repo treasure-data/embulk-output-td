@@ -3,7 +3,7 @@ package org.embulk.output.td.writer;
 import org.embulk.output.td.MsgpackGZFileBuilder;
 import org.embulk.spi.Column;
 import org.embulk.spi.PageReader;
-import org.embulk.spi.time.TimestampFormatter;
+import org.embulk.util.timestamp.TimestampFormatter;
 
 import java.io.IOException;
 
@@ -45,7 +45,7 @@ public class StringFieldWriter
     @Override
     protected void writeTimestampValue(MsgpackGZFileBuilder builder, PageReader reader, Column column) throws IOException
     {
-        builder.writeString(formatter.format(reader.getTimestamp(column)));
+        builder.writeString(formatter.format(getTimestamp(reader, column)));
     }
 
     @Override

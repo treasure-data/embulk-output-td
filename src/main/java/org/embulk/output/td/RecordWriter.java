@@ -26,7 +26,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class RecordWriter
         implements TransactionalPageOutput
 {
-    private final Logger log;
+    private static final Logger log = LoggerFactory.getLogger(RecordWriter.class);
     private final TDClient client;
     private final String sessionName;
     private final int taskIndex;
@@ -44,7 +44,6 @@ public class RecordWriter
 
     public RecordWriter(TdOutputPlugin.PluginTask task, int taskIndex, TDClient client, FieldWriterSet fieldWriters)
     {
-        this.log = LoggerFactory.getLogger(getClass());
         this.client = checkNotNull(client);
         this.sessionName = task.getSessionName();
         this.taskIndex = taskIndex;
@@ -60,7 +59,7 @@ public class RecordWriter
     public void open(final Schema schema)
             throws IOException
     {
-        this.pageReader = new PageReader(checkNotNull(schema));
+        this.pageReader = getPageReader(checkNotNull(schema));
         prepareNextBuilder();
     }
 
@@ -193,8 +192,32 @@ public class RecordWriter
     @Override
     public TaskReport commit()
     {
-        TaskReport report = Exec.newTaskReport()
+        final TaskReport report = TdOutputPlugin.CONFIG_MAPPER_FACTORY.newTaskReport()
                 .set(TdOutputPlugin.TASK_REPORT_UPLOADED_PART_NUMBER, partSeqId);
         return report;
     }
+
+    @SuppressWarnings("deprecation")
+    private static PageReader getPageReader(final Schema schema)
+    {
+        if (HAS_EXEC_GET_PAGE_READER) {
+            return Exec.getPageReader(schema);
+        }
+        else {
+            return new PageReader(schema);
+        }
+    }
+
+    private static boolean hasExecGetPageReader()
+    {
+        try {
+            Exec.class.getMethod("getPageReader", Schema.class);
+        }
+        catch (final NoSuchMethodException ex) {
+            return false;
+        }
+        return true;
+    }
+
+    private static final boolean HAS_EXEC_GET_PAGE_READER = hasExecGetPageReader();
 }

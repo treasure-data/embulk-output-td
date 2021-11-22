@@ -1,6 +1,5 @@
 package org.embulk.output.td;
 
-import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
 import com.treasuredata.client.TDClient;
 import org.embulk.EmbulkTestRuntime;
@@ -8,7 +7,6 @@ import org.embulk.output.td.TdOutputPlugin.PluginTask;
 import org.embulk.spi.Page;
 import org.embulk.spi.PageTestUtils;
 import org.embulk.spi.Schema;
-import org.embulk.spi.time.Timestamp;
 import org.embulk.spi.type.Types;
 import org.junit.Before;
 import org.junit.Rule;
@@ -16,12 +14,12 @@ import org.junit.Test;
 import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessageUnpacker;
 import org.msgpack.value.Value;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
 import java.util.zip.GZIPInputStream;
 
 import static org.embulk.output.td.TestTdOutputPlugin.config;
@@ -44,7 +42,6 @@ public class TestRecordWriter
     @Rule
     public EmbulkTestRuntime runtime = new EmbulkTestRuntime();
 
-    private Logger log;
     private Schema schema;
     private TdOutputPlugin plugin; // mock
     private PluginTask task;
@@ -53,8 +50,6 @@ public class TestRecordWriter
     @Before
     public void createResources()
     {
-        log = LoggerFactory.getLogger(TestRecordWriter.class);
-
         schema = schema("time", Types.LONG, "_c0", Types.LONG, "_c1", Types.STRING,
                 "_c2", Types.BOOLEAN, "_c3", Types.DOUBLE, "_c4", Types.TIMESTAMP);
 
@@ -67,7 +62,7 @@ public class TestRecordWriter
     public void checkOpenAndClose()
             throws Exception
     {
-        recordWriter = recordWriter(task, tdClient(plugin, task), fieldWriters(log, task, schema));
+        recordWriter = recordWriter(task, tdClient(plugin, task), fieldWriters(task, schema));
 
         // confirm that no error happens
         try {
@@ -83,10 +78,10 @@ public class TestRecordWriter
             throws Exception
     {
         TDClient client = spy(plugin.newTDClient(task));
-        recordWriter = recordWriter(task, client, fieldWriters(log, task, schema));
+        recordWriter = recordWriter(task, client, fieldWriters(task, schema));
 
         { // add no record
-            RecordWriter recordWriter = recordWriter(task, client, fieldWriters(log, task, schema));
+            RecordWriter recordWriter = recordWriter(task, client, fieldWriters(task, schema));
             try {
                 recordWriter.open(schema);
             }
@@ -98,13 +93,13 @@ public class TestRecordWriter
         { // add 1 record
             doNothing().when(client).uploadBulkImportPart(anyString(), anyString(), any(File.class));
 
-            RecordWriter recordWriter = recordWriter(task, client, fieldWriters(log, task, schema));
+            RecordWriter recordWriter = recordWriter(task, client, fieldWriters(task, schema));
             try {
                 recordWriter.open(schema);
 
                 // values are not null
                 for (Page page : PageTestUtils.buildPage(runtime.getBufferAllocator(), schema,
-                        1442595600L, 0L, "v", true, 0.0, Timestamp.ofEpochSecond(1442595600L))) {
+                        1442595600L, 0L, "v", true, 0.0, Instant.ofEpochSecond(1442595600L))) {
                     recordWriter.add(page);
                 }
             }
@@ -118,14 +113,14 @@ public class TestRecordWriter
     public void addNonNullValues()
             throws Exception
     {
-        recordWriter = recordWriter(task, tdClient(plugin, task), fieldWriters(log, task, schema));
+        recordWriter = recordWriter(task, tdClient(plugin, task), fieldWriters(task, schema));
 
         try {
             recordWriter.open(schema);
 
             // values are not null
             for (Page page : PageTestUtils.buildPage(runtime.getBufferAllocator(), schema,
-                    1442595600L, 0L, "v", true, 0.0, Timestamp.ofEpochSecond(1442595600L))) {
+                    1442595600L, 0L, "v", true, 0.0, Instant.ofEpochSecond(1442595600L))) {
                 recordWriter.add(page);
             }
 
@@ -156,7 +151,7 @@ public class TestRecordWriter
     public void addNullValues()
             throws Exception
     {
-        recordWriter = recordWriter(task, tdClient(plugin, task), fieldWriters(log, task, schema));
+        recordWriter = recordWriter(task, tdClient(plugin, task), fieldWriters(task, schema));
 
         try {
             recordWriter.open(schema);
@@ -200,14 +195,14 @@ public class TestRecordWriter
                 .set("time_value", ImmutableMap.of("from", 0L, "to", 0L))
                 .set("tmpdir", Optional.of(plugin.getEnvironmentTempDirectory()))
         );
-        recordWriter = recordWriter(task, tdClient(plugin, task), fieldWriters(log, task, schema));
+        recordWriter = recordWriter(task, tdClient(plugin, task), fieldWriters(task, schema));
 
         try {
             recordWriter.open(schema);
 
             // values are not null
             for (Page page : PageTestUtils.buildPage(runtime.getBufferAllocator(), schema,
-                    0L, "v", true, 0.0, Timestamp.ofEpochSecond(1442595600L))) {
+                    0L, "v", true, 0.0, Instant.ofEpochSecond(1442595600L))) {
                 recordWriter.add(page);
             }
 
@@ -237,7 +232,7 @@ public class TestRecordWriter
     @Test
     public void doAbortNorthing()
     {
-        recordWriter = recordWriter(task, tdClient(plugin, task), fieldWriters(log, task, schema));
+        recordWriter = recordWriter(task, tdClient(plugin, task), fieldWriters(task, schema));
         recordWriter.abort();
         // no error happen
     }
@@ -245,7 +240,7 @@ public class TestRecordWriter
     @Test
     public void checkTaskReport()
     {
-        recordWriter = recordWriter(task, tdClient(plugin, task), fieldWriters(log, task, schema));
+        recordWriter = recordWriter(task, tdClient(plugin, task), fieldWriters(task, schema));
         assertTrue(recordWriter.commit().has(TdOutputPlugin.TASK_REPORT_UPLOADED_PART_NUMBER));
     }
 }

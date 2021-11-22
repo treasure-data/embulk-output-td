@@ -1,9 +1,9 @@
 package org.embulk.output.td;
 
-import com.google.common.base.Optional;
-import org.embulk.config.Config;
-import org.embulk.config.ConfigDefault;
-import org.embulk.config.Task;
+import java.util.Optional;
+import org.embulk.util.config.Config;
+import org.embulk.util.config.ConfigDefault;
+import org.embulk.util.config.Task;
 
 public interface TimeValueConfig
         extends Task

@@ -11,6 +11,7 @@ import org.embulk.spi.type.StringType;
 import org.embulk.spi.type.TimestampType;
 
 import java.io.IOException;
+import java.time.Instant;
 
 public abstract class FieldWriter
         implements IFieldWriter
@@ -79,4 +80,26 @@ public abstract class FieldWriter
 
     protected abstract void writeJsonValue(MsgpackGZFileBuilder builder, PageReader reader, Column column)
             throws IOException;
+
+    @SuppressWarnings("deprecation")  // org.embulk.spi.time.Timestamp
+    Instant getTimestamp(final PageReader reader, final Column column)
+    {
+        if (HAS_GET_TIMESTAMP_INSTANT) {
+            return reader.getTimestampInstant(column);
+        }
+        return reader.getTimestamp(column).getInstant();
+    }
+
+    private static boolean hasGetTimestampInstant()
+    {
+        try {
+            PageReader.class.getMethod("getTimestampInstant", Column.class);
+        }
+        catch (final NoSuchMethodException ex) {
+            return false;
+        }
+        return true;
+    }
+
+    private static final boolean HAS_GET_TIMESTAMP_INSTANT = hasGetTimestampInstant();
 }

@@ -41,12 +41,12 @@ public class TestTimeValueGenerator
         // incremental_time
         { // {from: 0, to: 0} # default incremental_time
             schema = schema("_c0", Types.STRING, "_c1", Types.LONG);
-            FieldWriterSet.createWithValidation(log, pluginTask(config.set("time_value", ImmutableMap.of("from", 0L, "to", 0L))), schema, false);
+            FieldWriterSet.createWithValidation(pluginTask(config.set("time_value", ImmutableMap.of("from", 0L, "to", 0L))), schema, false);
         }
         { // {from: 0} # default incremental_time
             schema = schema("_c0", Types.STRING, "_c1", Types.LONG);
             try {
-                FieldWriterSet.createWithValidation(log, pluginTask(config.set("time_value", ImmutableMap.of("from", 0L))), schema, false);
+                FieldWriterSet.createWithValidation(pluginTask(config.set("time_value", ImmutableMap.of("from", 0L))), schema, false);
                 fail();
             }
             catch (Throwable t) {
@@ -56,7 +56,7 @@ public class TestTimeValueGenerator
         { // {to: 0} # default incremental_time
             schema = schema("_c0", Types.STRING, "_c1", Types.LONG);
             try {
-                FieldWriterSet.createWithValidation(log, pluginTask(config.set("time_value", ImmutableMap.of("to", 0L))), schema, false);
+                FieldWriterSet.createWithValidation(pluginTask(config.set("time_value", ImmutableMap.of("to", 0L))), schema, false);
                 fail();
             }
             catch (Throwable t) {
@@ -65,12 +65,12 @@ public class TestTimeValueGenerator
         }
         { // {from: 0, to: 0, mode: incremental_time}
             schema = schema("_c0", Types.STRING, "_c1", Types.LONG);
-            FieldWriterSet.createWithValidation(log, pluginTask(config.set("time_value", ImmutableMap.of("from", 0L, "to", 0L, "mode", "incremental_time"))), schema, false);
+            FieldWriterSet.createWithValidation(pluginTask(config.set("time_value", ImmutableMap.of("from", 0L, "to", 0L, "mode", "incremental_time"))), schema, false);
         }
         { // {from: 0, mode: incremental_time}
             schema = schema("_c0", Types.STRING, "_c1", Types.LONG);
             try {
-                FieldWriterSet.createWithValidation(log, pluginTask(config.set("time_value", ImmutableMap.of("from", 0L, "mode", "incremental_time"))), schema, false);
+                FieldWriterSet.createWithValidation(pluginTask(config.set("time_value", ImmutableMap.of("from", 0L, "mode", "incremental_time"))), schema, false);
                 fail();
             }
             catch (Throwable t) {
@@ -80,7 +80,7 @@ public class TestTimeValueGenerator
         { // {to: 0, mode: incremental_time}
             schema = schema("_c0", Types.STRING, "_c1", Types.LONG);
             try {
-                FieldWriterSet.createWithValidation(log, pluginTask(config.set("time_value", ImmutableMap.of("to", 0L, "mode", "incremental_time"))), schema, false);
+                FieldWriterSet.createWithValidation(pluginTask(config.set("time_value", ImmutableMap.of("to", 0L, "mode", "incremental_time"))), schema, false);
                 fail();
             }
             catch (Throwable t) {
@@ -90,7 +90,7 @@ public class TestTimeValueGenerator
         { // {mode: incremental_time}
             schema = schema("_c0", Types.STRING, "_c1", Types.LONG);
             try {
-                FieldWriterSet.createWithValidation(log, pluginTask(config.set("time_value", ImmutableMap.of("mode", "incremental_time"))), schema, false);
+                FieldWriterSet.createWithValidation(pluginTask(config.set("time_value", ImmutableMap.of("mode", "incremental_time"))), schema, false);
                 fail();
             }
             catch (Throwable t) {
@@ -101,12 +101,12 @@ public class TestTimeValueGenerator
         // fixed_time
         { // {value: 0, mode: fixed_time}
             schema = schema("_c0", Types.STRING, "_c1", Types.LONG);
-            FieldWriterSet.createWithValidation(log, pluginTask(config.set("time_value", ImmutableMap.of("value", 0L, "mode", "fixed_time"))), schema, false);
+            FieldWriterSet.createWithValidation(pluginTask(config.set("time_value", ImmutableMap.of("value", 0L, "mode", "fixed_time"))), schema, false);
         }
         { // {mode: fixed_time}
             schema = schema("_c0", Types.STRING, "_c1", Types.LONG);
             try {
-                FieldWriterSet.createWithValidation(log, pluginTask(config.set("time_value", ImmutableMap.of("mode", "fixed_time"))), schema, false);
+                FieldWriterSet.createWithValidation(pluginTask(config.set("time_value", ImmutableMap.of("mode", "fixed_time"))), schema, false);
             }
             catch (Throwable t) {
                 assertTrue(t instanceof ConfigException);
@@ -115,7 +115,7 @@ public class TestTimeValueGenerator
         { // {value: 0}
             schema = schema("_c0", Types.STRING, "_c1", Types.LONG);
             try {
-                FieldWriterSet.createWithValidation(log, pluginTask(config.set("time_value", ImmutableMap.of("value", 0L))), schema, false);
+                FieldWriterSet.createWithValidation(pluginTask(config.set("time_value", ImmutableMap.of("value", 0L))), schema, false);
             }
             catch (Throwable t) {
                 assertTrue(t instanceof ConfigException);
