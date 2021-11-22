@@ -139,28 +139,32 @@ publishing {
 
                 developers {
                     developer {
+                        name = "Muga Nishizawa"
+                        email = "muga.nishizawa@gmail.com"
+                    }
+                    developer {
+                        name = "Sadayuki Furuhashi"
+                        email = "frsyuki@gmail.com"
+                    }
+                    developer {
                         name = "Satoshi Akama"
                         email = "satoshiakama@gmail.com"
-                    }
-                    developer {
-                        name = "Tai Khuu"
-                        email = "khuutantai@gmail.com"
-                    }
-                    developer {
-                        name = "Trung Huynh"
-                        email = "httrung90@gmail.com"
                     }
                     developer {
                         name = "Dai MIKURUBE"
                         email = "dmikurube@treasure-data.com"
                     }
                     developer {
-                        name = "Viet Nguyen"
-                        email = "viet.nguyen@treasure-data.com"
+                        name = "Trung Huynh"
+                        email = "httrung90@gmail.com"
                     }
                     developer {
-                        name = "John Luong"
-                        email = "jluong@treasure-data.com"
+                        name = "Tuan Bui"
+                        email = "xuantuan58@gmail.com"
+                    }
+                    developer {
+                        name = "Serhii Himadieiev"
+                        email = "gimadeevsv@gmail.com"
                     }
                 }
 
