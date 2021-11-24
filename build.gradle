@@ -13,7 +13,7 @@ repositories {
 }
 
 group = "com.treasuredata.embulk.plugins"
-version = "0.8.0-SNAPSHOT"
+version = "0.8.0"
 description = "TreasureData output plugin is an Embulk plugin that loads records to Treasure Data read by any input plugins."
 
 sourceCompatibility = 1.8
