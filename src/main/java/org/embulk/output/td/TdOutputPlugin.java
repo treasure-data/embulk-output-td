@@ -204,6 +204,10 @@ public class TdOutputPlugin
         Optional<Integer> getPort();
         void setPort(Optional<Integer> port);
 
+        @Config("default_boolean_type_convert_to")
+        @ConfigDefault("\"long\"")
+        ConvertBooleanType getConvertBooleanType();
+
         boolean getDoUpload();
         void setDoUpload(boolean doUpload);
 
@@ -336,6 +340,36 @@ public class TdOutputPlugin
         public String toString()
         {
             return name().toLowerCase();
+        }
+    }
+
+    public static enum ConvertBooleanType
+    {
+        STRING(TDColumnType.STRING),
+        LONG(TDColumnType.LONG);
+
+        private final TDColumnType outputColumnType;
+
+        private ConvertBooleanType(TDColumnType outputColumnType)
+        {
+            this.outputColumnType = outputColumnType;
+        }
+
+        public TDColumnType getOutputColumnType()
+        {
+            return outputColumnType;
+        }
+
+        @JsonCreator
+        public static ConvertBooleanType of(String value)
+        {
+            final String loweredCaseValue = value.toLowerCase();
+            switch (loweredCaseValue) {
+                case "string": return STRING;
+                case "long": return LONG;
+                default:
+                    throw new ConfigException(String.format("Unknown convert_boolean_type '%s'. Supported types are [string, long]", loweredCaseValue));
+            }
         }
     }
 
@@ -756,7 +790,7 @@ public class TdOutputPlugin
         inputSchema.visitColumns(new ColumnVisitor() {
             public void booleanColumn(Column column)
             {
-                guessedSchema.put(column.getName(), TDColumnType.LONG);
+                guessedSchema.put(column.getName(), task.getConvertBooleanType().getOutputColumnType());
             }
 
             public void longColumn(Column column)
