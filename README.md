@@ -46,7 +46,7 @@
 - **additional_http_headers**: add additional headers to the requests (a key & value map, default: null)
 - **port**: set port for Http requests. By default will connect to port 443 or 80 if `use_ssl: false` (int, optional)
 - **ignore_alternative_time_if_time_exists**: ignore `time_column` and `time_value` in the configuration if a `time` column exists in the input schema. (boolean, default: false)
-- **default_boolean_type_convert_to**: configure output type of boolean column. Available options are "long" (convert boolean to long) and "string" (convert boolean to string). (string, default: `"long"`)
+- **default_boolean_type_convert_to**: configure output TD's type from Embulk's BOOLEAN columns. Available options are "long" (convert Embulk's BOOLEAN to TD's long) and "string" (convert Embulk's BOOLEAN to TD's string). (string, default: `"long"`)
 
 ## Modes
 * **append**:
