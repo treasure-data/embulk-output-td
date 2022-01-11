@@ -365,10 +365,10 @@ public class TdOutputPlugin
         {
             final String loweredCaseValue = value.toLowerCase();
             switch (loweredCaseValue) {
-                case "string": return STRING;
                 case "long": return LONG;
+                case "string": return STRING;
                 default:
-                    throw new ConfigException(String.format("Unknown convert_boolean_type '%s'. Supported types are [string, long]", loweredCaseValue));
+                    throw new ConfigException(String.format("Unknown convert_boolean_type '%s'. Supported types are [long, string]", loweredCaseValue));
             }
         }
     }
