@@ -23,7 +23,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
     
-    - name: Cache gradel repository
+    - name: Cache gradle repository
       uses: actions/cache@v2
       with:
         path: |
