@@ -28,10 +28,6 @@ jobs:
           name: tests
           path: ./build/reports/tests/test
 
-      - name: JaCoCo test report
-        if: success()
-        run: ./gradlew jacocoTestReport
-
       - uses: actions/upload-artifact@v3
         if: success()
         with:
