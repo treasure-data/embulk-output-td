@@ -13,7 +13,7 @@ repositories {
 }
 
 group = "com.treasuredata.embulk.plugins"
-version = "0.8.1-SNAPSHOT"
+version = "0.8.2-SNAPSHOT"
 description = "TreasureData output plugin is an Embulk plugin that loads records to Treasure Data read by any input plugins."
 
 sourceCompatibility = 1.8
@@ -58,6 +58,7 @@ dependencies {
         // slf4j-api is included in embulk-api's dependencies.
         exclude group: "org.slf4j", module: "slf4j-api"
     }
+    compile "com.squareup.okhttp3:okhttp:4.9.3"
 
     compile("org.embulk:embulk-util-config:0.3.1") {
         // They conflict with embulk-core.

@@ -16,8 +16,8 @@ com.google.inject:guice:4.0
 com.google.j2objc:j2objc-annotations:1.1
 com.googlecode.json-simple:json-simple:1.1.1
 com.squareup.okhttp3:okhttp-urlconnection:3.14.7
-com.squareup.okhttp3:okhttp:3.14.7
-com.squareup.okio:okio:1.17.2
+com.squareup.okhttp3:okhttp:4.9.3
+com.squareup.okio:okio:2.8.0
 com.treasuredata.client:td-client:0.9.5
 javax.annotation:javax.annotation-api:1.2
 javax.inject:javax.inject:1
@@ -29,4 +29,7 @@ org.embulk:embulk-util-config:0.3.1
 org.embulk:embulk-util-rubytime:0.3.2
 org.embulk:embulk-util-timestamp:0.2.1
 org.hamcrest:hamcrest-core:1.1
+org.jetbrains.kotlin:kotlin-stdlib-common:1.4.10
+org.jetbrains.kotlin:kotlin-stdlib:1.4.10
+org.jetbrains:annotations:13.0
 org.json:json:20171018

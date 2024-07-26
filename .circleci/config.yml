@@ -1,0 +1,10 @@
+version: 2.1
+jobs:
+  build:
+    docker:
+      - image: alpine:3.15
+    steps:
+      - run:
+          name: Init Build
+          command: |
+            echo 'init CI build'
