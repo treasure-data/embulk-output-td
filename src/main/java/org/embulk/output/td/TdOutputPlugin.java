@@ -670,9 +670,9 @@ public class TdOutputPlugin
             final Instant transactionTime = getTransactionTime();
             final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
                     .withZone(ZoneOffset.UTC);
-            return String.format("embulk_%s_%09d_%s",
+            return String.format("embulk_%s_%09d",
                     dateTimeFormatter.format(transactionTime),
-                    transactionTime.getNano(), UUID.randomUUID().toString().replace('-', '_'));
+                    transactionTime.getNano());
         }
     }
 
