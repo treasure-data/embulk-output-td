@@ -22,13 +22,13 @@ jobs:
       - name: Build with testing
         run: ./gradlew clean check jacocoTestReport --console verbose
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: tests
           path: ./build/reports/tests/test
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: success()
         with:
           name: jacoco
