@@ -17,6 +17,8 @@ import com.treasuredata.client.model.TDBulkImportSession;
 import com.treasuredata.client.model.TDBulkImportSession.ImportStatus;
 import com.treasuredata.client.model.TDColumn;
 import com.treasuredata.client.model.TDColumnType;
+import com.treasuredata.client.model.TDJob;
+import com.treasuredata.client.model.TDJobSummary;
 import com.treasuredata.client.model.TDTable;
 import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigException;
@@ -739,7 +741,7 @@ public class TdOutputPlugin
             log.info("Performing bulk import session '{}'", sessionName);
             session = waitForStatusChange(client, sessionName,
                     ImportStatus.PERFORMING, ImportStatus.READY,
-                    "perform");
+                    "perform", true);
             log.info("    job id: {}", session.getJobId());
 
             // pass
@@ -770,7 +772,7 @@ public class TdOutputPlugin
         case COMMITTING:
             session = waitForStatusChange(client, sessionName,
                     ImportStatus.COMMITTING, ImportStatus.COMMITTED,
-                    "commit");
+                    "commit", false);
 
             // pass
         case COMMITTED:
@@ -939,11 +941,24 @@ public class TdOutputPlugin
 
     @VisibleForTesting
     TDBulkImportSession waitForStatusChange(TDClient client, String sessionName,
-            ImportStatus current, ImportStatus expecting, String operation)
+            ImportStatus current, ImportStatus expecting, String operation, boolean isCheckingJobStatus)
     {
         TDBulkImportSession importSession;
+        int count = 0;
         while (true) {
             importSession = client.getBulkImportSession(sessionName);
+
+            // Check if the job has been killed or not, otherwise it will be stuck forever.
+            if (isCheckingJobStatus && count > 20) {
+                if (importSession.getJobId() != null) {
+                    TDJobSummary jobSummary = client.jobStatus(importSession.getJobId());
+                    if (jobSummary.getStatus() == TDJob.Status.KILLED) {
+                        throw new BulkImportPerformJobKilledException(jobSummary.getJobId());
+                    }
+                }
+                count = 0; // reset count after checking job status
+            }
+            count++;
 
             if (importSession.getStatus() == expecting) {
                 return importSession;
