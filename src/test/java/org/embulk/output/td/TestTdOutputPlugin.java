@@ -64,6 +64,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doNothing;
@@ -467,7 +468,7 @@ public class TestTdOutputPlugin
         PluginTask task = pluginTask(config);
         Schema schema = schema("c0", Types.LONG);
 
-        doReturn(session(UNKNOWN, false)).when(plugin).waitForStatusChange(any(TDClient.class), anyString(), any(ImportStatus.class), any(ImportStatus.class), anyString());
+        doReturn(session(UNKNOWN, false)).when(plugin).waitForStatusChange(any(TDClient.class), anyString(), any(ImportStatus.class), any(ImportStatus.class), anyString(), anyBoolean());
         doReturn(new HashMap<String, TDColumnType>()).when(plugin).updateSchema(any(TDClient.class), any(Schema.class), any(PluginTask.class));
 
         TDClient client = spy(plugin.newTDClient(task));
@@ -537,12 +538,12 @@ public class TestTdOutputPlugin
 
         { // performing -> ready
             doReturn(session(PERFORMING, false)).doReturn(session(READY, false)).when(client).getBulkImportSession("my_session");
-            plugin.waitForStatusChange(client, "my_session", PERFORMING, READY, "");
+            plugin.waitForStatusChange(client, "my_session", PERFORMING, READY, "", true);
         }
 
         { // committing -> committed
             doReturn(session(COMMITTING, false)).doReturn(session(COMMITTED, false)).when(client).getBulkImportSession("my_session");
-            plugin.waitForStatusChange(client, "my_session", COMMITTING, COMMITTED, "");
+            plugin.waitForStatusChange(client, "my_session", COMMITTING, COMMITTED, "", false);
         }
     }
 
