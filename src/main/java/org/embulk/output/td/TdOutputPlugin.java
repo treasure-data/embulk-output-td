@@ -945,20 +945,32 @@ public class TdOutputPlugin
     {
         TDBulkImportSession importSession;
         int count = 0;
+        boolean stopAskingJobStatus = false;
+
         while (true) {
             importSession = client.getBulkImportSession(sessionName);
 
-            // Check if the job has been killed or not, otherwise it will be stuck forever.
-            if (isCheckingJobStatus && count > 20) {
-                if (importSession.getJobId() != null) {
-                    TDJobSummary jobSummary = client.jobStatus(importSession.getJobId());
-                    if (jobSummary.getStatus() == TDJob.Status.KILLED) {
-                        throw new BulkImportPerformJobKilledException(jobSummary.getJobId());
+            // Check if the job has been killed or not, otherwise it will be stuck forever
+            if (!stopAskingJobStatus && isCheckingJobStatus) {
+                if (count > 20) {
+                    if (importSession.getJobId() != null) {
+                        try {
+                            TDJobSummary jobSummary = client.jobStatus(importSession.getJobId());
+                            if (jobSummary.getStatus() == TDJob.Status.KILLED) {
+                                throw new BulkImportPerformJobKilledException(jobSummary.getJobId());
+                            }
+                        } catch (RuntimeException e) {
+                            if (e instanceof BulkImportPerformJobKilledException) {
+                                throw e;
+                            }
+                            log.warn("Failed to check job status for bulk import session '{}', reason: '{}'. Skip it.", sessionName, e.getMessage());
+                            stopAskingJobStatus = true;
+                        }
                     }
+                    count = 0; // reset count after checking job status
                 }
-                count = 0; // reset count after checking job status
+                count++;
             }
-            count++;
 
             if (importSession.getStatus() == expecting) {
                 return importSession;
